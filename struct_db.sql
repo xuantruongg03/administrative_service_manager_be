@@ -55,7 +55,7 @@ INSERT INTO type_of_organizations (id, name) VALUES
 
 -- Công ty
 CREATE TABLE IF NOT EXISTS businesses (
-    id VARCHAR(12) NOT NULL PRIMARY KEY,
+    code VARCHAR(12) NOT NULL PRIMARY KEY,
     name_vietnamese VARCHAR(255) NOT NULL,
     name_english VARCHAR(255) NULL,
     name_acronym VARCHAR(255) NOT NULL, --Tên viết tắt

@@ -1,5 +1,6 @@
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
+import CONSTANTS from 'src/common/constants';
 
 export const multerConfig = {
     storage: diskStorage({
@@ -14,7 +15,8 @@ export const multerConfig = {
         },
     }),
     fileFilter: (req, file, callback) => {
-        if (file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+        const ext = file.originalname.split('.').pop();
+        if (CONSTANTS.ACCEPTED_FILE_TYPES.includes(ext)) {
             callback(null, true);
         } else {
             callback(new Error('Unsupported file type'), false);

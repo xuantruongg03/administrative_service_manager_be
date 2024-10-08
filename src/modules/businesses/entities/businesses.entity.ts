@@ -1,11 +1,11 @@
 import {
-    Entity,
     Column,
-    PrimaryColumn,
     CreateDateColumn,
-    UpdateDateColumn,
-    ManyToOne,
+    Entity,
     JoinColumn,
+    ManyToOne,
+    PrimaryColumn,
+    UpdateDateColumn,
 } from 'typeorm';
 import { Person } from '../../persons/entities/persons.entity';
 import { TypeOfOrganization } from '../../type-of-organizations/entities/type-of-organization.entity';
@@ -45,6 +45,13 @@ export class Business {
     @Column()
     type_of_organization: string;
 
+    @Column()
+    owner_id: string;
+
+    @ManyToOne(() => Person)
+    @JoinColumn({ name: 'citizen_id' })
+    owner: Person;
+
     @ManyToOne(() => TypeOfOrganization)
     @JoinColumn({ name: 'type_of_organization' })
     organizationType: TypeOfOrganization;
@@ -53,14 +60,14 @@ export class Business {
     legal_representative: string;
 
     @ManyToOne(() => Person)
-    @JoinColumn({ name: 'legal_representative' })
+    @JoinColumn({ name: 'citizen_id' })
     representative: Person;
 
     @Column()
-    latitude: string;
+    latitude: number;
 
     @Column()
-    longitude: string;
+    longitude: number;
 
     @Column()
     status: string;

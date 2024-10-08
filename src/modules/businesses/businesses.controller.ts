@@ -1,12 +1,17 @@
 import {
-    Controller,
-    Get,
-    Post,
     Body,
-    Patch,
-    Param,
+    Controller,
     Delete,
+    Get,
+    InternalServerErrorException,
+    Param,
+    Patch,
+    Post,
+    UploadedFile,
+    UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { return_success } from 'src/common/return';
 import { BusinessesService } from './businesses.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
@@ -18,6 +23,16 @@ export class BusinessesController {
     @Post()
     create(@Body() createBusinessDto: CreateBusinessDto) {
         return this.businessesService.create(createBusinessDto);
+    }
+
+    @Post('create-business-by-excel')
+    @UseInterceptors(FileInterceptor('file'))
+    async createBusinessByExcel(@UploadedFile() file: Express.Multer.File) {
+        const rs = await this.businessesService.createBusinessByExcel(file);
+        if (typeof rs === 'string') {
+            throw new InternalServerErrorException(rs);
+        }
+        return return_success('Businesses created successfully');
     }
 
     @Get()

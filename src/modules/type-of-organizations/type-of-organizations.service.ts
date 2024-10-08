@@ -23,10 +23,10 @@ export class TypeOfOrganizationsService {
         return organizations.map((org) => this.toDto(org));
     }
 
-    async findByName(name: string): Promise<TypeOfOrganizationDTO> {
+    async findByName(name: string): Promise<TypeOfOrganization | null> {
         const organization = await this.typeOfOrganizationRepository.findOne({
             where: { name },
         });
-        return this.toDto(organization);
+        return organization || null;
     }
 }
