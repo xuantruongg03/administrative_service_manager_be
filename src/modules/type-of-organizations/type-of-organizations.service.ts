@@ -22,4 +22,11 @@ export class TypeOfOrganizationsService {
         const organizations = await this.typeOfOrganizationRepository.find();
         return organizations.map((org) => this.toDto(org));
     }
+
+    async findByName(name: string): Promise<TypeOfOrganizationDTO> {
+        const organization = await this.typeOfOrganizationRepository.findOne({
+            where: { name },
+        });
+        return this.toDto(organization);
+    }
 }
