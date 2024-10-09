@@ -12,4 +12,11 @@ const return_error_500 = (message: string) => {
     };
 };
 
-export { return_success, return_error_500 };
+const return_error_400 = (message: string) => {
+    return {
+        statusCode: 400,
+        message: message,
+    };
+};
+
+export { return_success, return_error_500, return_error_400 };

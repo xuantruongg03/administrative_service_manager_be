@@ -1,15 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { CreateBusinessDto } from './dto/create-business.dto';
-import { UpdateBusinessDto } from './dto/update-business.dto';
-import * as XLSX from 'xlsx';
-import { Business } from './entities/businesses.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { GeocodingService } from 'src/shared/geocoding.service';
+import { Repository } from 'typeorm';
+import * as XLSX from 'xlsx';
 import { Person } from '../persons/entities/persons.entity';
 import { PersonsService } from '../persons/persons.service';
-import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
 import { TypeOfOrganization } from '../type-of-organizations/entities/type-of-organization.entity';
+import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
+import { UpdateBusinessDto } from './dto/update-business.dto';
+import { Business } from './entities/businesses.entity';
 
 @Injectable()
 export class BusinessesService {
@@ -21,8 +20,12 @@ export class BusinessesService {
         private readonly typeOfOrganizationService: TypeOfOrganizationsService,
     ) {}
 
-    create(createBusinessDto: CreateBusinessDto) {
-        return 'This action adds a new business';
+    async create(business: Business) {
+        const check = await this.checkBusinessData(business);
+        if (check) {
+            return check;
+        }
+        return await this.businessRepository.save(business);
     }
 
     /**
