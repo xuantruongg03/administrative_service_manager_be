@@ -6,6 +6,7 @@ import {
     Param,
     Patch,
     Post,
+    Query,
     UploadedFile,
     UseInterceptors,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { return_error_400, return_success } from 'src/common/return';
 import { BusinessesService } from './businesses.service';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { Business } from './entities/businesses.entity';
+import CONSTANTS from 'src/common/constants';
 
 @Controller('businesses')
 export class BusinessesController {
@@ -39,8 +41,17 @@ export class BusinessesController {
     }
 
     @Get()
-    findAll() {
-        return this.businessesService.findAll();
+    findAll(@Query() query: { page: number; limit: number }) {
+        const { page, limit } = query;
+        const pageNumber = Number(page);
+        let limitNumber = Number(limit);
+        if (!page) {
+            return return_error_400('Page are required');
+        }
+        if (!limitNumber) {
+            limitNumber = CONSTANTS.LIMIT_BUSINESS_PER_PAGE;
+        }
+        return this.businessesService.findAll(pageNumber, limitNumber);
     }
 
     @Get(':id')

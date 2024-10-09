@@ -9,6 +9,7 @@ import { TypeOfOrganization } from '../type-of-organizations/entities/type-of-or
 import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { Business } from './entities/businesses.entity';
+import { BusinessDTO } from './dto/business.dto';
 
 @Injectable()
 export class BusinessesService {
@@ -306,8 +307,32 @@ export class BusinessesService {
         }
     }
 
-    findAll() {
-        return `This action returns all businesses`;
+    /**
+     * This TypeScript function asynchronously retrieves a specified number of business entities based
+     * on the provided page and limit parameters.
+     * @param {number} page - The `page` parameter represents the page number of the results you want
+     * to retrieve.
+     * @param {number} limit - The `limit` parameter specifies the maximum number of items to retrieve
+     * in a single page or query. It determines the number of results that will be returned by the
+     * `findAll` method.
+     * @returns The `findAll` method is returning a list of business entities based on the provided
+     * `page` and `limit` parameters. The method queries the business repository to find entities with
+     * pagination parameters calculated based on the input `page` and `limit` values.
+     */
+    async findAll(
+        page: number,
+        limit: number,
+    ): Promise<{ data: BusinessDTO[]; total: number; isLastPage: boolean }> {
+        const validPage = Math.max(1, page);
+        const validLimit = Math.max(1, limit);
+        const rs = await this.businessRepository.find({
+            skip: (validPage - 1) * validLimit,
+            take: validLimit,
+        });
+
+        const total = await this.businessRepository.count();
+        const isLastPage = total <= validPage * validLimit;
+        return { data: rs, total, isLastPage };
     }
 
     findOne(id: number) {
