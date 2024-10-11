@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { return_error_400 } from 'src/common/return';
 
 @Controller('employees')
 export class EmployeesController {
@@ -17,7 +18,10 @@ export class EmployeesController {
     //Get all employees owned by a business
     @Get()
     findAll(@Query() query: { businessCode: string }) {
-        return this.employeesService.findAllByBusinessCode(query);
+        if (!query.businessCode) {
+            return return_error_400('Business code is required');
+        }
+        return this.employeesService.findAllByBusinessCode(query.businessCode);
     }
 
     @Post('create-employee-by-excel')

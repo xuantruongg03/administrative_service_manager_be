@@ -19,8 +19,10 @@ export class PersonsService {
         return `This action returns all persons`;
     }
 
-    findOne(id: number) {
-        return `This action returns a #${id} person`;
+    async findOne(citizen_id: string): Promise<Person | null> {
+        return await this.personRepository.findOne({
+            where: { citizen_id: citizen_id },
+        });
     }
 
     update(id: number, updatePersonDto: UpdatePersonDto) {
@@ -31,10 +33,10 @@ export class PersonsService {
         return `This action removes a #${id} person`;
     }
 
-    async checkPersonData(citizen_id: string): Promise<Person | string> {
+    async isPersonExist(citizen_id: string): Promise<boolean | string> {
         const person = await this.personRepository.findOne({
             where: { citizen_id: citizen_id },
         });
-        return person || null;
+        return !!person;
     }
 }

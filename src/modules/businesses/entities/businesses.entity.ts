@@ -63,10 +63,18 @@ export class Business {
     @JoinColumn({ name: 'citizen_id' })
     representative: Person;
 
-    @Column()
+    @Column({
+        type: 'decimal',
+        precision: 12,
+        scale: 8,
+    })
     latitude: number;
 
-    @Column()
+    @Column({
+        type: 'decimal',
+        precision: 12,
+        scale: 8,
+    })
     longitude: number;
 
     @Column()

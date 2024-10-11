@@ -7,15 +7,16 @@ import {
     Patch,
     Post,
     Query,
+    Res,
     UploadedFile,
     UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
+import CONSTANTS from 'src/common/constants';
 import { return_error_400, return_success } from 'src/common/return';
 import { BusinessesService } from './businesses.service';
-import { UpdateBusinessDto } from './dto/update-business.dto';
 import { Business } from './entities/businesses.entity';
-import CONSTANTS from 'src/common/constants';
 
 @Controller('businesses')
 export class BusinessesController {
@@ -40,9 +41,27 @@ export class BusinessesController {
         return return_success('Businesses created successfully');
     }
 
+    @Get('export-excel')
+    async exportExcel(@Res() res: Response) {
+        const { buffer, fileName } =
+            await this.businessesService.exportBusinessToExcel();
+        res.set({
+            'Content-Type':
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
+            'Content-Length': buffer.length,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+        });
+        res.end(buffer);
+    }
+
     @Get()
-    findAll(@Query() query: { page: number; limit: number }) {
-        const { page, limit } = query;
+    async findAll(
+        @Query() query: { page: number; limit: number; keyword: string },
+    ) {
+        const { page, limit, keyword } = query;
         const pageNumber = Number(page);
         let limitNumber = Number(limit);
         if (!page) {
@@ -51,24 +70,35 @@ export class BusinessesController {
         if (!limitNumber) {
             limitNumber = CONSTANTS.LIMIT_BUSINESS_PER_PAGE;
         }
-        return this.businessesService.findAll(pageNumber, limitNumber);
+        const rs = await this.businessesService.findAll(
+            pageNumber,
+            limitNumber,
+            keyword,
+        );
+        return return_success('Businesses fetched successfully', rs);
     }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.businessesService.findOne(+id);
+    @Get(':code')
+    findOne(@Param('code') code: string) {
+        if (!code) {
+            return return_error_400('Code are required');
+        }
+        return this.businessesService.findOne(code);
     }
 
-    @Patch(':id')
-    update(
-        @Param('id') id: string,
-        @Body() updateBusinessDto: UpdateBusinessDto,
-    ) {
-        return this.businessesService.update(+id, updateBusinessDto);
+    @Patch(':code')
+    update(@Param('code') code: string, @Body() business: Business) {
+        if (!code) {
+            return return_error_400('Code are required');
+        }
+        return this.businessesService.update(code, business);
     }
 
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.businessesService.remove(+id);
+    @Delete()
+    remove(@Body() code: string[]) {
+        if (!code || code.length === 0) {
+            return return_error_400('Code are required');
+        }
+        return this.businessesService.remove(code);
     }
 }

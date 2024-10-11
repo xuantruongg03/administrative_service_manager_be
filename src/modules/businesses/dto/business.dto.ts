@@ -1,3 +1,5 @@
+import { Employee } from 'src/modules/employees/entities/employee.entity';
+
 export class BusinessDTO {
     code: string;
     name_vietnamese: string;
@@ -17,4 +19,9 @@ export class BusinessDTO {
     status: string;
     created_at: Date;
     updated_at: Date;
+    number_of_employees: number;
+}
+
+export class BusinessWithEmployeesDTO extends BusinessDTO {
+    employees: Employee[];
 }

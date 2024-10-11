@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { GenerateIdService } from 'src/shared/generate-id.service';
 import { Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
 import { Person } from '../persons/entities/persons.entity';
+import { PersonsService } from '../persons/persons.service';
 import { Employee } from './entities/employee.entity';
 
 @Injectable()
@@ -11,14 +11,13 @@ export class EmployeesService {
     constructor(
         @InjectRepository(Employee)
         private readonly employeeRepository: Repository<Employee>,
-        @InjectRepository(Person)
-        private readonly personRepository: Repository<Person>,
-        private readonly generateIdService: GenerateIdService,
+        private readonly personsService: PersonsService,
+        // private readonly generateIdService: GenerateIdService,
     ) {}
 
-    findAllByBusinessCode(query: { businessCode: string }) {
+    findAllByBusinessCode(businessCode: string) {
         return this.employeeRepository.find({
-            where: { business_code: query.businessCode },
+            where: { business_code: businessCode },
         });
     }
 

@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { parseDate } from 'src/common/format';
 import { GeocodingService } from 'src/shared/geocoding.service';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
+import { EmployeesService } from '../employees/employees.service';
 import { Person } from '../persons/entities/persons.entity';
 import { PersonsService } from '../persons/persons.service';
 import { TypeOfOrganization } from '../type-of-organizations/entities/type-of-organization.entity';
 import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
-import { UpdateBusinessDto } from './dto/update-business.dto';
+import { BusinessDTO, BusinessWithEmployeesDTO } from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
-import { BusinessDTO } from './dto/business.dto';
+import { return_success } from 'src/common/return';
 
 @Injectable()
 export class BusinessesService {
@@ -19,6 +21,7 @@ export class BusinessesService {
         private readonly geocodingService: GeocodingService,
         private readonly personsService: PersonsService,
         private readonly typeOfOrganizationService: TypeOfOrganizationsService,
+        private readonly employeesService: EmployeesService,
     ) {}
 
     async create(business: Business) {
@@ -141,13 +144,13 @@ export class BusinessesService {
         const person = new Person();
         person.citizen_id = data['CCCD người đại diện'];
         person.name = data['Tên người đại diện'];
-        person.birth_date = data['Ngày sinh người đại diện'];
+        person.birth_date = parseDate(data['Ngày sinh người đại diện']);
         person.gender = data['Giới tính người đại diện'];
         person.nationality = data['Quốc tịch người đại diện'];
         person.religion = data['Dân tộc người đại diện'];
         person.type_of_certificate = data['Loại giấy tờ người đại diện'];
         person.issued_by = data['Nơi cấp người đại diện'];
-        person.issued_date = data['Ngày cấp người đại diện'];
+        person.issued_date = parseDate(data['Ngày cấp người đại diện']);
         person.hometown = data['Quê quán người đại diện'];
         person.current_address = data['Địa chỉ hiện tại người đại diện'];
         return person;
@@ -174,10 +177,10 @@ export class BusinessesService {
         person.name = data['Tên người sở hữu'];
         person.type_of_certificate = data['Loại giấy tờ người sở hữu'];
         person.issued_by = data['Nơi cấp người sở hữu'];
-        person.issued_date = data['Ngày cấp người sở hữu'];
+        person.issued_date = parseDate(data['Ngày cấp người sở hữu']);
         person.hometown = data['Quê quán người sở hữu'];
         person.current_address = data['Địa chỉ hiện tại người sở hữu'];
-        person.birth_date = data['Ngày sinh người sở hữu'];
+        person.birth_date = parseDate(data['Ngày sinh người sở hữu']);
         person.gender = data['Giới tính người sở hữu'];
         person.nationality = data['Quốc tịch người sở hữu'];
         person.religion = data['Dân tộc người sở hữu'];
@@ -217,10 +220,12 @@ export class BusinessesService {
             });
         business.legal_representative = data['CCCD người đại diện'];
         business.owner_id = data['CCCD người sở hữu'];
-        business.status = data['Trạng thái'] || 'normal';
+        business.status =
+            data['Trạng thái'] === 'Hoạt động' ? 'active' : 'inactive';
         const coordinates = await this.geocodingService.getCoordinates(
             business.address,
         );
+        console.log(coordinates);
         business.latitude = coordinates.latitude;
         business.longitude = coordinates.longitude;
         return business;
@@ -282,19 +287,19 @@ export class BusinessesService {
             }
             //check exist representative and owner
             const isExistRepresentative =
-                await this.personsService.checkPersonData(
+                await this.personsService.isPersonExist(
                     person_representative.citizen_id,
                 );
-            const isExistOwner = await this.personsService.checkPersonData(
+
+            if (!isExistRepresentative) {
+                await this.personsService.create(person_representative);
+            }
+            const isExistOwner = await this.personsService.isPersonExist(
                 person_owner.citizen_id,
             );
-
-            // if not exist, create new person
-            if (isExistRepresentative === null) {
-                this.personsService.create(person_representative);
-            }
-            if (isExistOwner === null) {
-                this.personsService.create(person_owner);
+            // Create owner if not exists
+            if (!isExistOwner) {
+                await this.personsService.create(person_owner);
             }
             //check exist business
             const isExistBusiness = await this.checkBusinessExist(
@@ -322,28 +327,144 @@ export class BusinessesService {
     async findAll(
         page: number,
         limit: number,
-    ): Promise<{ data: BusinessDTO[]; total: number; isLastPage: boolean }> {
+        keyword: string,
+    ): Promise<{
+        data: BusinessDTO[];
+        totalPages: number;
+        isLastPage: boolean;
+        totalRecords: number;
+    }> {
         const validPage = Math.max(1, page);
         const validLimit = Math.max(1, limit);
-        const rs = await this.businessRepository.find({
-            skip: (validPage - 1) * validLimit,
-            take: validLimit,
+        let query = this.businessRepository.createQueryBuilder('business');
+        if (keyword && keyword.trim() !== '') {
+            query = query.where([
+                { name_vietnamese: ILike(`%${keyword}%`) },
+                { name_english: ILike(`%${keyword}%`) },
+                { name_acronym: ILike(`%${keyword}%`) },
+                { address: ILike(`%${keyword}%`) },
+                { code: ILike(`%${keyword}%`) },
+            ]);
+        }
+
+        const [rs, totalRecords] = await query
+            .skip((validPage - 1) * validLimit)
+            .take(validLimit)
+            .getManyAndCount();
+
+        const totalPages = Math.ceil(totalRecords / validLimit);
+        const isLastPage = totalRecords <= validPage * validLimit;
+
+        const data = await Promise.all(
+            rs.map(async (business) => {
+                const employee_of_business =
+                    await this.employeesService.findAllByBusinessCode(
+                        business.code,
+                    );
+                const number_of_employees = employee_of_business.length;
+                return { ...business, number_of_employees };
+            }),
+        );
+        return { data, totalPages, isLastPage, totalRecords };
+    }
+
+    /**
+     * The function `exportBusinessToExcel` retrieves business data, transforms it into an Excel workbook,
+     * and returns the workbook buffer along with a generated file name.
+     * @returns The `exportBusinessToExcel` method returns an object with two properties:
+     * 1. `buffer`: A buffer containing the Excel file data.
+     * 2. `fileName`: A string representing the file name for the exported Excel file, which includes the
+     * current timestamp in ISO format.
+     */
+    async exportBusinessToExcel() {
+        const businesses = await this.businessRepository.find();
+        const workbook = XLSX.utils.book_new();
+        const worksheetData = await Promise.all(
+            businesses.map(async (business) => {
+                const representative = await this.personsService.findOne(
+                    business.legal_representative,
+                );
+                const owner = await this.personsService.findOne(
+                    business.owner_id,
+                );
+                const type_of_organization =
+                    await this.typeOfOrganizationService.findOne(
+                        business.type_of_organization,
+                    );
+                return {
+                    'Mã doanh nghiệp': business.code,
+                    'Tên doanh nghiệp (VN)': business.name_vietnamese,
+                    'Tên doanh nghiệp (EN)': business.name_english,
+                    'Tên viết tắt': business.name_acronym,
+                    'Địa chỉ': business.address,
+                    'Số điện thoại': business.phone,
+                    'Địa chỉ email': business.email,
+                    Website: business.website,
+                    Fax: business.fax,
+                    'Vốn điều lệ': business.chartered_capital,
+                    'Loại hình doanh nghiệp': type_of_organization.name,
+                    'Trạng thái': business.status,
+                    'Tên người đại diện': representative.name,
+                    'CCCD người đại diện': representative.citizen_id,
+                    'Loại giấy tờ người đại diện':
+                        representative.type_of_certificate,
+                    'Nơi cấp người đại diện': representative.issued_by,
+                    'Ngày cấp người đại diện': representative.issued_date,
+                    'Quê quán người đại diện': representative.hometown,
+                    'Địa chỉ hiện tại người đại diện':
+                        representative.current_address,
+                    'Ngày sinh người đại diện': representative?.birth_date,
+                    'Giới tính người đại diện': representative.gender,
+                    'Quốc tịch người đại diện': representative.nationality,
+                    'Dân tộc người đại diện': representative.religion,
+                    'Tên người sở hữu': owner.name,
+                    'CCCD người sở hữu': owner.citizen_id,
+                    'Loại giấy tờ người sở hữu': owner.type_of_certificate,
+                    'Nơi cấp người sở hữu': owner.issued_by,
+                    'Ngày cấp người sở hữu': owner.issued_date,
+                    'Quê quán người sở hữu': owner.hometown,
+                    'Địa chỉ hiện tại người sở hữu': owner.current_address,
+                    'Ngày sinh người sở hữu': owner.birth_date,
+                    'Giới tính người sở hữu': owner.gender,
+                    'Quốc tịch người sở hữu': owner.nationality,
+                    'Dân tộc người sở hữu': owner.religion,
+                };
+            }),
+        );
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Doanh nghiệp');
+        const excelBuffer = XLSX.write(workbook, {
+            type: 'buffer',
+            bookType: 'xlsx',
         });
+        const fileName = `businesses_export_${new Date().toISOString()}.xlsx`;
 
-        const total = await this.businessRepository.count();
-        const isLastPage = total <= validPage * validLimit;
-        return { data: rs, total, isLastPage };
+        return {
+            buffer: excelBuffer,
+            fileName: fileName,
+        };
     }
 
-    findOne(id: number) {
-        return `This action returns a #${id} business`;
+    async findOne(code: string): Promise<BusinessWithEmployeesDTO | null> {
+        const rs = await this.businessRepository.findOne({
+            where: { code },
+        });
+        const employees =
+            await this.employeesService.findAllByBusinessCode(code);
+        const number_of_employees = employees.length;
+        const businessWithEmployees = { ...rs, employees, number_of_employees };
+        return businessWithEmployees;
     }
 
-    update(id: number, updateBusinessDto: UpdateBusinessDto) {
-        return `This action updates a #${id} business`;
+    async update(code: string, business: Business) {
+        const rs = await this.businessRepository.update(code, business);
+        return rs;
     }
 
-    remove(id: number) {
-        return `This action removes a #${id} business`;
+    remove(code: string[]) {
+        code.map((c) => {
+            this.businessRepository.softDelete(c);
+        });
+        return return_success('Xóa doanh nghiệp thành công');
     }
 }

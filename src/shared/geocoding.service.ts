@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 
 @Injectable()
@@ -24,17 +24,19 @@ export class GeocodingService {
                     longitude: parseFloat(result.lon),
                 };
             } else {
-                throw new HttpException(
-                    'Address not found',
-                    HttpStatus.NOT_FOUND,
-                );
+                console.log('Address not found:', address);
+                return {
+                    latitude: 0,
+                    longitude: 0,
+                };
             }
         } catch (error) {
+            console.log(address);
             console.error('Geocoding service error:', error);
-            throw new HttpException(
-                'Geocoding service error',
-                HttpStatus.INTERNAL_SERVER_ERROR,
-            );
+            return {
+                latitude: 0,
+                longitude: 0,
+            };
         }
     }
 }

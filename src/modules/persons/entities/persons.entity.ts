@@ -5,6 +5,7 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
 } from 'typeorm';
+import * as moment from 'moment';
 
 @Entity('persons')
 export class Person {
@@ -14,7 +15,28 @@ export class Person {
     @Column()
     name: string;
 
-    @Column()
+    @Column({
+        type: 'date',
+        // transformer: {
+        //     to(value: string | Date): string | null {
+        //         if (!value) return null;
+        //         if (value instanceof Date) {
+        //             return value.toISOString().split('T')[0];
+        //         }
+        //         const momentDate = moment(
+        //             value,
+        //             ['DD/MM/YYYY', 'YYYY-MM-DD'],
+        //             true,
+        //         );
+        //         return momentDate.isValid()
+        //             ? momentDate.format('YYYY-MM-DD')
+        //             : null;
+        //     },
+        //     from(value: string): Date | null {
+        //         return value ? new Date(value) : null;
+        //     },
+        // },
+    })
     birth_date: Date;
 
     @Column()
@@ -32,7 +54,28 @@ export class Person {
     @Column()
     issued_by: string;
 
-    @Column()
+    @Column({
+        type: 'date',
+        // transformer: {
+        //     to(value: string | Date): string | null {
+        //         if (!value) return null;
+        //         if (value instanceof Date) {
+        //             return value.toISOString().split('T')[0];
+        //         }
+        //         const momentDate = moment(
+        //             value,
+        //             ['DD/MM/YYYY', 'YYYY-MM-DD'],
+        //             true,
+        //         );
+        //         return momentDate.isValid()
+        //             ? momentDate.format('YYYY-MM-DD')
+        //             : null;
+        //     },
+        //     from(value: string): Date | null {
+        //         return value ? new Date(value) : null;
+        //     },
+        // },
+    })
     issued_date: Date;
 
     @Column()
