@@ -1,6 +1,7 @@
 import {
     Column,
     CreateDateColumn,
+    DeleteDateColumn,
     Entity,
     JoinColumn,
     ManyToOne,
@@ -85,4 +86,7 @@ export class Business {
 
     @UpdateDateColumn()
     updated_at: Date;
+
+    @DeleteDateColumn()
+    deleted_at: Date;
 }

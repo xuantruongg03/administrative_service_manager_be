@@ -33,10 +33,14 @@ export class PersonsService {
         return `This action removes a #${id} person`;
     }
 
-    async isPersonExist(citizen_id: string): Promise<boolean | string> {
+    async isPersonExist(citizen_id: string): Promise<boolean> {
+        if (!citizen_id || typeof citizen_id !== 'string') {
+            throw new Error('Invalid citizen_id provided');
+        }
+
         const person = await this.personRepository.findOne({
             where: { citizen_id: citizen_id },
         });
-        return !!person;
+        return person !== null && person !== undefined;
     }
 }

@@ -142,7 +142,7 @@ export class BusinessesService {
             return check;
         }
         const person = new Person();
-        person.citizen_id = data['CCCD người đại diện'];
+        person.citizen_id = data['CCCD người đại diện'].toString();
         person.name = data['Tên người đại diện'];
         person.birth_date = parseDate(data['Ngày sinh người đại diện']);
         person.gender = data['Giới tính người đại diện'];
@@ -173,7 +173,7 @@ export class BusinessesService {
             return check;
         }
         const person = new Person();
-        person.citizen_id = data['CCCD người sở hữu'];
+        person.citizen_id = data['CCCD người sở hữu'].toString();
         person.name = data['Tên người sở hữu'];
         person.type_of_certificate = data['Loại giấy tờ người sở hữu'];
         person.issued_by = data['Nơi cấp người sở hữu'];
@@ -203,7 +203,7 @@ export class BusinessesService {
             return check;
         }
         const business = new Business();
-        business.code = data['Mã doanh nghiệp'];
+        business.code = data['Mã doanh nghiệp'].toString();
         business.name_vietnamese = data['Tên doanh nghiệp (VN)'];
         business.name_english = data['Tên doanh nghiệp (EN)'] || '';
         business.name_acronym = data['Tên viết tắt'];
@@ -242,14 +242,23 @@ export class BusinessesService {
      * `Business` object if found in the database based on the provided `code` and `name_vietnamese`,
      * or `null` if no matching business is found.
      */
-    private async checkBusinessExist(
+    private async isBusinessExist(
         code: string,
         name_vietnamese: string,
-    ): Promise<Business | null> {
-        const business = await this.businessRepository.findOne({
-            where: { code, name_vietnamese },
-        });
-        return business || null;
+    ): Promise<boolean> {
+        if (!code || !name_vietnamese) {
+            throw new Error('Code and Vietnamese name are required');
+        }
+
+        try {
+            const business = await this.businessRepository.findOne({
+                where: { code, name_vietnamese },
+            });
+            return business !== null && business !== undefined;
+        } catch (error) {
+            console.error('Error checking business existence:', error);
+            throw new Error('Failed to check business existence');
+        }
     }
 
     /**
@@ -302,11 +311,11 @@ export class BusinessesService {
                 await this.personsService.create(person_owner);
             }
             //check exist business
-            const isExistBusiness = await this.checkBusinessExist(
+            const isExistBusiness = await this.isBusinessExist(
                 business.code,
                 business.name_vietnamese,
             );
-            if (isExistBusiness === null) {
+            if (!isExistBusiness) {
                 await this.businessRepository.save(business);
             }
         }
@@ -403,7 +412,10 @@ export class BusinessesService {
                     Fax: business.fax,
                     'Vốn điều lệ': business.chartered_capital,
                     'Loại hình doanh nghiệp': type_of_organization.name,
-                    'Trạng thái': business.status,
+                    'Trạng thái':
+                        business.status === 'active'
+                            ? 'Hoạt động'
+                            : 'Không hoạt động',
                     'Tên người đại diện': representative.name,
                     'CCCD người đại diện': representative.citizen_id,
                     'Loại giấy tờ người đại diện':
@@ -461,10 +473,11 @@ export class BusinessesService {
         return rs;
     }
 
-    remove(code: string[]) {
-        code.map((c) => {
+    async remove(code: string[]) {
+        const deletePromises = code.map((c) => {
             this.businessRepository.softDelete(c);
         });
+        await Promise.all(deletePromises);
         return return_success('Xóa doanh nghiệp thành công');
     }
 }

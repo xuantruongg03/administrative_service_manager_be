@@ -95,10 +95,10 @@ export class BusinessesController {
     }
 
     @Delete()
-    remove(@Body() code: string[]) {
-        if (!code || code.length === 0) {
-            return return_error_400('Code are required');
+    remove(@Body() ids: string[]) {
+        if (!ids || ids.length === 0) {
+            return return_error_400('ids are required');
         }
-        return this.businessesService.remove(code);
+        return this.businessesService.remove(ids);
     }
 }
