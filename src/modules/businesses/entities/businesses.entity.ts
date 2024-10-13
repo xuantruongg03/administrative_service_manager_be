@@ -10,10 +10,11 @@ import {
 } from 'typeorm';
 import { Person } from '../../persons/entities/persons.entity';
 import { TypeOfOrganization } from '../../type-of-organizations/entities/type-of-organization.entity';
+import CONSTANTS from 'src/common/constants';
 
 @Entity('businesses')
 export class Business {
-    @PrimaryColumn({ length: 12 })
+    @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
     code: string;
 
     @Column()

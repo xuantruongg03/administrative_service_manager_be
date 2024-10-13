@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { parseDate } from 'src/common/format';
+import { return_success } from 'src/common/return';
 import { GeocodingService } from 'src/shared/geocoding.service';
 import { ILike, Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
@@ -9,9 +10,8 @@ import { Person } from '../persons/entities/persons.entity';
 import { PersonsService } from '../persons/persons.service';
 import { TypeOfOrganization } from '../type-of-organizations/entities/type-of-organization.entity';
 import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
-import { BusinessDTO, BusinessWithEmployeesDTO } from './dto/business.dto';
+import { BusinessDTO, BusinessInforDTO } from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
-import { return_success } from 'src/common/return';
 
 @Injectable()
 export class BusinessesService {
@@ -22,7 +22,7 @@ export class BusinessesService {
         private readonly personsService: PersonsService,
         private readonly typeOfOrganizationService: TypeOfOrganizationsService,
         private readonly employeesService: EmployeesService,
-    ) {}
+    ) { }
 
     async create(business: Business) {
         const check = await this.checkBusinessData(business);
@@ -457,15 +457,41 @@ export class BusinessesService {
         };
     }
 
-    async findOne(code: string): Promise<BusinessWithEmployeesDTO | null> {
-        const rs = await this.businessRepository.findOne({
+    async findOne(code: string): Promise<BusinessInforDTO | null> {
+        const business = await this.businessRepository.findOne({
             where: { code },
         });
         const employees =
             await this.employeesService.findAllByBusinessCode(code);
         const number_of_employees = employees.length;
-        const businessWithEmployees = { ...rs, employees, number_of_employees };
-        return businessWithEmployees;
+        const representative = await this.personsService.findOne(
+            business.legal_representative,
+        );
+        const owner = await this.personsService.findOne(business.owner_id);
+        const type_of_organization =
+            await this.typeOfOrganizationService.findOne(
+                business.type_of_organization,
+            );
+        const businessInfo: BusinessInforDTO = {
+            code: business.code,
+            name_vietnamese: business.name_vietnamese,
+            name_english: business.name_english,
+            name_acronym: business.name_acronym,
+            address: business.address,
+            phone: business.phone,
+            email: business.email,
+            website: business.website,
+            fax: business.fax,
+            chartered_capital: business.chartered_capital,
+            type_of_organization: type_of_organization.name,
+            status: business.status,
+            legal_representative: representative.name,
+            owner: owner.name,
+            employee: employees,
+            number_of_employees,
+            created_at: business.created_at,
+        };
+        return businessInfo;
     }
 
     async update(code: string, business: Business) {

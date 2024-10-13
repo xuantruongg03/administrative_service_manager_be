@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { TypeOfOrganizationDTO } from './dto/type-of-organization.dto';
+import { return_success } from 'src/common/return';
 import { TypeOfOrganizationsService } from './type-of-organizations.service';
 
 @Controller('type-of-organizations')
@@ -9,7 +9,8 @@ export class TypeOfOrganizationsController {
     ) {}
 
     @Get()
-    async findAll(): Promise<TypeOfOrganizationDTO[]> {
-        return this.typeOfOrganizationsService.findAll();
+    async findAll() {
+        const rs = await this.typeOfOrganizationsService.findAll();
+        return return_success('Type of organizations fetched successfully', rs);
     }
 }

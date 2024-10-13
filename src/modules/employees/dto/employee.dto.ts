@@ -1,9 +1,8 @@
 export class EmployeeDTO {
     id: string;
     name: string;
-    email: string;
-    phone: string;
-    address: string;
+    citizen_id: string;
     position: string;
-    department: string;
+    phone: string;
+    start_date: Date;
 }

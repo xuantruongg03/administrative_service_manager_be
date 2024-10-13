@@ -1,4 +1,4 @@
-import { Employee } from 'src/modules/employees/entities/employee.entity';
+import { EmployeeDTO } from 'src/modules/employees/dto/employee.dto';
 
 export class BusinessDTO {
     code: string;
@@ -22,6 +22,22 @@ export class BusinessDTO {
     number_of_employees: number;
 }
 
-export class BusinessWithEmployeesDTO extends BusinessDTO {
-    employees: Employee[];
+export class BusinessInforDTO {
+    code: string;
+    name_vietnamese: string;
+    name_english: string;
+    name_acronym: string;
+    address: string;
+    email: string;
+    phone: string;
+    fax: string;
+    website: string;
+    chartered_capital: string;
+    type_of_organization: string;
+    owner: string;
+    legal_representative: string;
+    number_of_employees: number;
+    status: string;
+    employee: EmployeeDTO[];
+    created_at: Date;
 }

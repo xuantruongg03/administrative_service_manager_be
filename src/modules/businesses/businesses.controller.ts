@@ -79,11 +79,12 @@ export class BusinessesController {
     }
 
     @Get(':code')
-    findOne(@Param('code') code: string) {
+    async findOne(@Param('code') code: string) {
         if (!code) {
             return return_error_400('Code are required');
         }
-        return this.businessesService.findOne(code);
+        const rs = await this.businessesService.findOne(code);
+        return return_success('Business fetched successfully', rs);
     }
 
     @Patch(':code')

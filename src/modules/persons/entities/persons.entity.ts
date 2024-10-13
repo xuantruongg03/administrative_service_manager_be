@@ -6,10 +6,11 @@ import {
     UpdateDateColumn,
 } from 'typeorm';
 import * as moment from 'moment';
+import CONSTANTS from 'src/common/constants';
 
 @Entity('persons')
 export class Person {
-    @PrimaryColumn({ length: 12 })
+    @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
     citizen_id: string;
 
     @Column()

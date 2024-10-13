@@ -9,13 +9,14 @@ import {
 } from 'typeorm';
 import { Person } from '../../persons/entities/persons.entity';
 import { Business } from '../../businesses/entities/businesses.entity';
+import CONSTANTS from 'src/common/constants';
 
 @Entity('employees')
 export class Employee {
-    @PrimaryColumn({ length: 12 })
+    @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
     id: string;
 
-    @PrimaryColumn({ length: 12 })
+    @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
     citizen_id: string;
 
     @ManyToOne(() => Person)
@@ -25,7 +26,7 @@ export class Employee {
     @Column()
     position: string;
 
-    @Column()
+    @Column({ nullable: true, length: 10 })
     phone: string;
 
     @Column()
