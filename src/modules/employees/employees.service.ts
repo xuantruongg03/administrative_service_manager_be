@@ -15,7 +15,7 @@ export class EmployeesService {
         @InjectRepository(Employee)
         private readonly employeeRepository: Repository<Employee>,
         private readonly personsService: PersonsService,
-    ) { }
+    ) {}
 
     async findAllByBusinessCode(businessCode: string): Promise<EmployeeDTO[]> {
         const employees = await this.employeeRepository.find({

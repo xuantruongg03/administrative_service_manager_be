@@ -1,17 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { parseDate } from 'src/common/format';
-import { return_success } from 'src/common/return';
 import { GeocodingService } from 'src/shared/geocoding.service';
 import { ILike, Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
+import { BussinessLicensesService } from '../bussiness-licenses/bussiness-licenses.service';
 import { EmployeesService } from '../employees/employees.service';
+import { LicenseTypeService } from '../license-type/license-type.service';
 import { Person } from '../persons/entities/persons.entity';
 import { PersonsService } from '../persons/persons.service';
 import { TypeOfOrganization } from '../type-of-organizations/entities/type-of-organization.entity';
 import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
-import { BusinessDTO, BusinessInforDTO } from './dto/business.dto';
+import {
+    BusinessDTO,
+    BusinessInforDTO,
+    BusinessMapDTO,
+    MapData,
+} from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
+import { Not } from 'typeorm';
 
 @Injectable()
 export class BusinessesService {
@@ -22,7 +29,9 @@ export class BusinessesService {
         private readonly personsService: PersonsService,
         private readonly typeOfOrganizationService: TypeOfOrganizationsService,
         private readonly employeesService: EmployeesService,
-    ) { }
+        private readonly businessLicenseService: BussinessLicensesService,
+        private readonly licenseTypeService: LicenseTypeService,
+    ) {}
 
     async create(business: Business) {
         const check = await this.checkBusinessData(business);
@@ -32,15 +41,6 @@ export class BusinessesService {
         return await this.businessRepository.save(business);
     }
 
-    /**
-     * The function `checkBusinessData` in TypeScript checks if certain fields are present in the
-     * provided data object and returns an error message if any required field is missing.
-     * @param {any} data - The `checkBusinessData` function is designed to validate business data. It
-     * checks if certain fields in the `data` object are present or not. Here are the required fields
-     * that the function checks for:
-     * @returns The `checkBusinessData` function is returning a string message if any of the required
-     * fields are missing in the `data` object. If all required fields are present, it returns `null`.
-     */
     private async checkBusinessData(data: any): Promise<string | null> {
         if (!data['Mã doanh nghiệp'] || !data['Tên doanh nghiệp (VN)']) {
             return 'Mã doanh nghiệp và tên doanh nghiệp (VN) là bắt buộc';
@@ -67,18 +67,6 @@ export class BusinessesService {
         return null;
     }
 
-    /**
-     * The function `checkPersonData` in TypeScript validates the presence of required personal data
-     * fields for representative and owner persons.
-     * @param {any} data - The `checkPersonData` function is checking the provided `data` object for
-     * various required fields related to two individuals - a representative and an owner. Here are the
-     * parameters that are being checked for each individual:
-     * @returns The function `checkPersonData` is checking if certain fields in the `data` object are
-     * missing. If any of the required fields are missing for either the representative person or the
-     * owner person, a corresponding error message is returned. If all required fields are present for
-     * both the representative person and the owner person, `null` is returned, indicating that the
-     * data is valid.
-     */
     private async checkPersonData(data: any): Promise<string | null> {
         if (!data['Tên người đại diện'] || !data['Tên người sở hữu']) {
             return 'Tên người đại diện và tên người sở hữu là bắt buộc';
@@ -125,17 +113,6 @@ export class BusinessesService {
         return null;
     }
 
-    /**
-     * The function `createRepresentative` creates a new `Person` object with data provided and returns
-     * it, or a string if there is an error.
-     * @param {any} data - The `data` parameter in the `createRepresentative` function seems to contain
-     * information about a person who is being created as a representative. The function is extracting
-     * various details such as citizen ID, name, type of certificate, issued by, issued date, hometown,
-     * current address, birth date, gender
-     * @returns The `createRepresentative` function is returning either an instance of the `Person`
-     * class with the populated data fields based on the input `data`, or a string if there is an error
-     * during the data validation process.
-     */
     private async createRepresentative(data: any): Promise<Person | string> {
         const check = await this.checkPersonData(data);
         if (check) {
@@ -156,17 +133,6 @@ export class BusinessesService {
         return person;
     }
 
-    /**
-     * The function `createOwner` creates a new `Person` object with data provided and returns it, or
-     * returns a string if there is an issue with the data.
-     * @param {any} data - The `createOwner` function is an asynchronous function that takes in a
-     * `data` object as a parameter. The `data` object contains information about a person who is being
-     * created as an owner. The function first checks the validity of the person data using the
-     * `checkPersonData` function. If
-     * @returns The `createOwner` function is returning either an instance of the `Person` class with
-     * the provided data assigned to its properties, or a string if there is an issue with the data
-     * validation during the `checkPersonData` step.
-     */
     private async createOwner(data: any): Promise<Person | string> {
         const check = await this.checkPersonData(data);
         if (check) {
@@ -187,16 +153,6 @@ export class BusinessesService {
         return person;
     }
 
-    /**
-     * The function `createBusiness` creates a new Business object with data provided, performs data
-     * validation, and retrieves coordinates for the business address using geocoding service.
-     * @param {any} data - The `data` parameter in the `createBusiness` method seems to contain information
-     * about a business entity. It includes various properties such as the business code, name in
-     * Vietnamese and English, address, phone number, email, website, fax, chartered capital, type of
-     * organization, legal representative, owner
-     * @returns The `createBusiness` method returns either an instance of the `Business` class with
-     * populated data fields or a string if there is an error during the data validation process.
-     */
     private async createBusiness(data: any): Promise<Business | string> {
         const check = await this.checkBusinessData(data);
         if (check) {
@@ -231,17 +187,6 @@ export class BusinessesService {
         return business;
     }
 
-    /**
-     * The function `checkBusinessExist` asynchronously checks if a business with a specific code and
-     * Vietnamese name exists in the database and returns the business if found, otherwise returns
-     * null.
-     * @param {string} code - A unique identifier for a business.
-     * @param {string} name_vietnamese - The parameter `name_vietnamese` is a string representing the
-     * Vietnamese name of a business.
-     * @returns The `checkBusinessExist` function is returning a Promise that resolves to either a
-     * `Business` object if found in the database based on the provided `code` and `name_vietnamese`,
-     * or `null` if no matching business is found.
-     */
     private async isBusinessExist(
         code: string,
         name_vietnamese: string,
@@ -261,18 +206,6 @@ export class BusinessesService {
         }
     }
 
-    /**
-     * This TypeScript function reads data from an Excel file, creates business entities,
-     * representative entities, and owner entities, and checks for existing data before saving new
-     * entries.
-     * @param file - The `file` parameter in the `createBusinessByExcel` function is of type
-     * `Express.Multer.File`, which is a file object containing information about the uploaded file.
-     * This parameter is used to read the Excel file data and process it to create business,
-     * representative, and owner entities based on
-     * @returns If any of the checks for invalid data or existing records fail during the creation
-     * process, a string error message is returned. Otherwise, the function continues to create
-     * business entities, representatives, owners, and persons as needed.
-     */
     async createBusinessByExcel(file: Express.Multer.File) {
         const workbook = XLSX.read(file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
@@ -321,18 +254,6 @@ export class BusinessesService {
         }
     }
 
-    /**
-     * This TypeScript function asynchronously retrieves a specified number of business entities based
-     * on the provided page and limit parameters.
-     * @param {number} page - The `page` parameter represents the page number of the results you want
-     * to retrieve.
-     * @param {number} limit - The `limit` parameter specifies the maximum number of items to retrieve
-     * in a single page or query. It determines the number of results that will be returned by the
-     * `findAll` method.
-     * @returns The `findAll` method is returning a list of business entities based on the provided
-     * `page` and `limit` parameters. The method queries the business repository to find entities with
-     * pagination parameters calculated based on the input `page` and `limit` values.
-     */
     async findAll(
         page: number,
         limit: number,
@@ -377,14 +298,6 @@ export class BusinessesService {
         return { data, totalPages, isLastPage, totalRecords };
     }
 
-    /**
-     * The function `exportBusinessToExcel` retrieves business data, transforms it into an Excel workbook,
-     * and returns the workbook buffer along with a generated file name.
-     * @returns The `exportBusinessToExcel` method returns an object with two properties:
-     * 1. `buffer`: A buffer containing the Excel file data.
-     * 2. `fileName`: A string representing the file name for the exported Excel file, which includes the
-     * current timestamp in ISO format.
-     */
     async exportBusinessToExcel() {
         const businesses = await this.businessRepository.find();
         const workbook = XLSX.utils.book_new();
@@ -458,6 +371,9 @@ export class BusinessesService {
     }
 
     async findOne(code: string): Promise<BusinessInforDTO | null> {
+        if (!code || code.trim() === '') {
+            return null;
+        }
         const business = await this.businessRepository.findOne({
             where: { code },
         });
@@ -465,38 +381,35 @@ export class BusinessesService {
             await this.employeesService.findAllByBusinessCode(code);
         const number_of_employees = employees.length;
         const representative = await this.personsService.findOne(
-            business.legal_representative,
+            business?.legal_representative,
         );
-        const owner = await this.personsService.findOne(business.owner_id);
-        const type_of_organization =
-            await this.typeOfOrganizationService.findOne(
-                business.type_of_organization,
-            );
+        const owner = await this.personsService.findOne(business?.owner_id);
         const businessInfo: BusinessInforDTO = {
-            code: business.code,
-            name_vietnamese: business.name_vietnamese,
-            name_english: business.name_english,
-            name_acronym: business.name_acronym,
-            address: business.address,
-            phone: business.phone,
-            email: business.email,
-            website: business.website,
-            fax: business.fax,
-            chartered_capital: business.chartered_capital,
-            type_of_organization: type_of_organization.name,
-            status: business.status,
-            legal_representative: representative.name,
-            owner: owner.name,
+            code: business?.code,
+            name_vietnamese: business?.name_vietnamese,
+            name_english: business?.name_english,
+            name_acronym: business?.name_acronym,
+            address: business?.address,
+            phone: business?.phone,
+            email: business?.email,
+            website: business?.website,
+            fax: business?.fax,
+            chartered_capital: business?.chartered_capital,
+            type_of_organization: business?.type_of_organization,
+            status: business?.status,
+            legal_representative: representative?.name,
+            owner: owner?.name,
             employee: employees,
             number_of_employees,
-            created_at: business.created_at,
+            created_at: business?.created_at,
         };
         return businessInfo;
     }
 
-    async update(code: string, business: Business) {
-        const rs = await this.businessRepository.update(code, business);
-        return rs;
+    async update(code: string, business: BusinessInforDTO) {
+        console.log(business);
+        // const rs = await this.businessRepository.update(code, business);
+        // return rs;
     }
 
     async remove(code: string[]) {
@@ -504,6 +417,108 @@ export class BusinessesService {
             this.businessRepository.softDelete(c);
         });
         await Promise.all(deletePromises);
-        return return_success('Xóa doanh nghiệp thành công');
+        return true;
+    }
+
+    async findAllMap(
+        page: number,
+        limit: number,
+    ): Promise<{
+        data: BusinessMapDTO[];
+        totalPages: number;
+        isLastPage: boolean;
+        totalRecords: number;
+        currentPage: number;
+    }> {
+        const validPage = Math.max(1, page);
+        const validLimit = Math.max(1, limit);
+        const query = this.businessRepository.createQueryBuilder('business');
+
+        const [rs, totalRecords] = await query
+            .skip((validPage - 1) * validLimit)
+            .take(validLimit)
+            .getManyAndCount();
+
+        const totalPages = Math.ceil(totalRecords / validLimit);
+        const isLastPage = totalRecords <= validPage * validLimit;
+
+        const data = await Promise.all(
+            rs.map(async (business) => {
+                const employee_of_business =
+                    await this.employeesService.findAllByBusinessCode(
+                        business.code,
+                    );
+                const number_of_employees = employee_of_business.length;
+
+                const license_status = await this.getLicenseStatus(
+                    business.code,
+                );
+                return {
+                    code: business.code,
+                    name_vietnamese: business.name_vietnamese,
+                    address: business.address,
+                    type_of_organization: business.type_of_organization,
+                    latitude: business.latitude,
+                    longitude: business.longitude,
+                    status: business.status,
+                    created_at: business.created_at,
+                    number_of_employees,
+                    license_status,
+                };
+            }),
+        );
+        return {
+            data,
+            totalPages,
+            isLastPage,
+            totalRecords,
+            currentPage: validPage,
+        };
+    }
+
+    private async getLicenseStatus(business_code: string): Promise<string[]> {
+        const licenses =
+            await this.businessLicenseService.findOne(business_code);
+        //Nếu không có giấy phép thì trả về mảng rỗng
+        if (!!licenses) {
+            return [
+                'Không có giấy phép kinh doanh',
+                'Không có giấy phép an ninh trật tự',
+            ];
+        }
+        //Nếu có giấy phép thì kiểm tra loại giấy phép, yêu cầu phải có giấy phép kinh doanh và an ninh trật tự
+        //Lấy ra các giấy phép bắt buộc và kiểm tra xem có bị thiếu không
+        const mandatoryLicenses = await this.licenseTypeService.findMandatory();
+        const missingLicenses = [];
+        for (const l of mandatoryLicenses) {
+            const license = licenses.find(
+                (license) => license.licenseType.name === l.name,
+            );
+            if (!license) {
+                missingLicenses.push(l.name);
+            }
+        }
+    }
+
+    async findAllMapMarker(): Promise<MapData[]> {
+        const businesses = await this.businessRepository.find({
+            where: [{ longitude: Not(0) }, { latitude: Not(0) }],
+        });
+
+        const mapData: Promise<MapData>[] = businesses.map(async (business) => {
+            const license_status = await this.getLicenseStatus(business.code);
+            const object: MapData = {
+                name: business.name_vietnamese,
+                address: business.address,
+                status: business.status,
+                number_of_problem: license_status.length,
+                license_status: license_status,
+                lng: business.longitude,
+                lat: business.latitude,
+                code: business.code,
+            };
+            return object;
+        });
+        return Promise.all(mapData);
     }
 }

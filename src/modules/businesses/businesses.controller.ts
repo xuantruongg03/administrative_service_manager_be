@@ -16,6 +16,7 @@ import { Response } from 'express';
 import CONSTANTS from 'src/common/constants';
 import { return_error_400, return_success } from 'src/common/return';
 import { BusinessesService } from './businesses.service';
+import { BusinessInforDTO } from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
 
 @Controller('businesses')
@@ -78,17 +79,8 @@ export class BusinessesController {
         return return_success('Businesses fetched successfully', rs);
     }
 
-    @Get(':code')
-    async findOne(@Param('code') code: string) {
-        if (!code) {
-            return return_error_400('Code are required');
-        }
-        const rs = await this.businessesService.findOne(code);
-        return return_success('Business fetched successfully', rs);
-    }
-
     @Patch(':code')
-    update(@Param('code') code: string, @Body() business: Business) {
+    update(@Param('code') code: string, @Body() business: BusinessInforDTO) {
         if (!code) {
             return return_error_400('Code are required');
         }
@@ -96,10 +88,47 @@ export class BusinessesController {
     }
 
     @Delete()
-    remove(@Body() ids: string[]) {
+    async remove(@Body() ids: string[]) {
         if (!ids || ids.length === 0) {
             return return_error_400('ids are required');
         }
-        return this.businessesService.remove(ids);
+        const rs = await this.businessesService.remove(ids);
+        if (typeof rs === 'string') {
+            return return_error_400(rs);
+        }
+        return return_success('Businesses deleted successfully');
+    }
+
+    @Get('map')
+    async findAllMap(@Query() query: { page: number; limit: number }) {
+        const { page, limit } = query;
+        const pageNumber = Number(page);
+        let limitNumber = Number(limit);
+        if (!page) {
+            return return_error_400('Page is required');
+        }
+        if (!limitNumber) {
+            limitNumber = CONSTANTS.LIMIT_BUSINESS_PER_PAGE;
+        }
+        const rs = await this.businessesService.findAllMap(
+            pageNumber,
+            limitNumber,
+        );
+        return return_success('Businesses fetched successfully', rs);
+    }
+
+    @Get('map-marker')
+    async findAllMapMarker() {
+        const rs = await this.businessesService.findAllMapMarker();
+        return return_success('Businesses fetched successfully', rs);
+    }
+
+    @Get(':code')
+    async findOne(@Param('code') code: string) {
+        if (!code) {
+            return return_error_400('Code are required');
+        }
+        const rs = await this.businessesService.findOne(code);
+        return return_success('Business fetched successfully', rs);
     }
 }

@@ -1,26 +1,53 @@
-import { Injectable } from '@nestjs/common';
-import { CreateLicenseTypeDto } from './dto/create-license-type.dto';
-import { UpdateLicenseTypeDto } from './dto/update-license-type.dto';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { LicenseType } from './entities/license-type.entity';
 
 @Injectable()
-export class LicenseTypeService {
-  create(createLicenseTypeDto: CreateLicenseTypeDto) {
-    return 'This action adds a new licenseType';
-  }
+export class LicenseTypeService implements OnModuleInit {
+    constructor(
+        @InjectRepository(LicenseType)
+        private readonly licenseTypeRepository: Repository<LicenseType>,
+    ) {}
 
-  findAll() {
-    return `This action returns all licenseType`;
-  }
+    async onModuleInit() {
+        const licenseTypes = await this.licenseTypeRepository.find();
+        if (licenseTypes.length === 0) {
+            await this.seedData();
+        }
+    }
 
-  findOne(id: number) {
-    return `This action returns a #${id} licenseType`;
-  }
+    private async seedData() {
+        const licenseTypes = [
+            {
+                id: '102318673847',
+                name: 'Business License',
+                is_mandatory: true,
+            },
+            {
+                id: '102318673848',
+                name: 'Security License',
+                is_mandatory: true,
+            },
+        ];
+        await this.licenseTypeRepository.save(licenseTypes);
+        console.log('License types seeded');
+    }
 
-  update(id: number, updateLicenseTypeDto: UpdateLicenseTypeDto) {
-    return `This action updates a #${id} licenseType`;
-  }
+    async findMandatory() {
+        return await this.licenseTypeRepository.find({
+            where: {
+                is_mandatory: true,
+            },
+        });
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} licenseType`;
-  }
+    async findOne(business_code: string) {
+        const licenseType = await this.licenseTypeRepository.findOne({
+            where: {
+                id: business_code,
+            },
+        });
+        return licenseType;
+    }
 }

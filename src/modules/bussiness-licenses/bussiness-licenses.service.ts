@@ -1,26 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { CreateBussinessLicenseDto } from './dto/create-bussiness-license.dto';
-import { UpdateBussinessLicenseDto } from './dto/update-bussiness-license.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { BusinessLicense } from './entities/business-licenses.entity';
 
 @Injectable()
 export class BussinessLicensesService {
-  create(createBussinessLicenseDto: CreateBussinessLicenseDto) {
-    return 'This action adds a new bussinessLicense';
-  }
+    constructor(
+        @InjectRepository(BusinessLicense)
+        private readonly businessLicenseRepository: Repository<BusinessLicense>,
+    ) {}
 
-  findAll() {
-    return `This action returns all bussinessLicenses`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} bussinessLicense`;
-  }
-
-  update(id: number, updateBussinessLicenseDto: UpdateBussinessLicenseDto) {
-    return `This action updates a #${id} bussinessLicense`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} bussinessLicense`;
-  }
+    async findOne(business_code: string) {
+        const license = await this.businessLicenseRepository.find({
+            where: {
+                business_code,
+            },
+        });
+        return license;
+    }
 }

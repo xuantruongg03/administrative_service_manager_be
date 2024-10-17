@@ -41,3 +41,27 @@ export class BusinessInforDTO {
     employee: EmployeeDTO[];
     created_at: Date;
 }
+
+export class BusinessMapDTO {
+    code: string;
+    name_vietnamese: string;
+    address: string;
+    type_of_organization: string;
+    latitude: number;
+    longitude: number;
+    status: string;
+    created_at: Date;
+    number_of_employees: number;
+    license_status: string[];
+}
+
+export class MapData {
+    name: string;
+    address: string;
+    status: string;
+    number_of_problem: number;
+    license_status: string[];
+    lng: number;
+    lat: number;
+    code: string;
+}
