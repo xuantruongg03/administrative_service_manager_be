@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { parseDate } from 'src/common/format';
 import { GeocodingService } from 'src/shared/geocoding.service';
@@ -26,10 +26,13 @@ export class BusinessesService {
         @InjectRepository(Business)
         private readonly businessRepository: Repository<Business>,
         private readonly geocodingService: GeocodingService,
+        @Inject(forwardRef(() => PersonsService))
         private readonly personsService: PersonsService,
-        private readonly typeOfOrganizationService: TypeOfOrganizationsService,
+        private readonly typeOfOrganizationsService: TypeOfOrganizationsService,
+        @Inject(forwardRef(() => EmployeesService))
         private readonly employeesService: EmployeesService,
-        private readonly businessLicenseService: BussinessLicensesService,
+        @Inject(forwardRef(() => BussinessLicensesService))
+        private readonly businessLicensesService: BussinessLicensesService,
         private readonly licenseTypeService: LicenseTypeService,
     ) {}
 
@@ -54,7 +57,7 @@ export class BusinessesService {
         if (data['Loại hình doanh nghiệp']) {
             const type_of_organization = data['Loại hình doanh nghiệp'];
             const typeOfOrganization =
-                await this.typeOfOrganizationService.findByName(
+                await this.typeOfOrganizationsService.findByName(
                     type_of_organization,
                 );
             if (typeOfOrganization === null) {
@@ -169,7 +172,7 @@ export class BusinessesService {
         business.website = data['Website'] || '';
         business.fax = data['Fax'] || '';
         business.chartered_capital = data['Vốn điều lệ'];
-        business.type_of_organization = await this.typeOfOrganizationService
+        business.type_of_organization = await this.typeOfOrganizationsService
             .findByName(data['Loại hình doanh nghiệp'])
             .then((type: TypeOfOrganization) => {
                 return type.id;
@@ -181,7 +184,6 @@ export class BusinessesService {
         const coordinates = await this.geocodingService.getCoordinates(
             business.address,
         );
-        console.log(coordinates);
         business.latitude = coordinates.latitude;
         business.longitude = coordinates.longitude;
         return business;
@@ -310,7 +312,7 @@ export class BusinessesService {
                     business.owner_id,
                 );
                 const type_of_organization =
-                    await this.typeOfOrganizationService.findOne(
+                    await this.typeOfOrganizationsService.findOne(
                         business.type_of_organization,
                     );
                 return {
@@ -377,31 +379,64 @@ export class BusinessesService {
         const business = await this.businessRepository.findOne({
             where: { code },
         });
+
+        if (!business) {
+            return null;
+        }
+
+        const representative = await this.personsService.findOne(
+            business.legal_representative,
+        );
+
+        const owner = await this.personsService.findOne(business.owner_id);
+
         const employees =
             await this.employeesService.findAllByBusinessCode(code);
         const number_of_employees = employees.length;
-        const representative = await this.personsService.findOne(
-            business?.legal_representative,
-        );
-        const owner = await this.personsService.findOne(business?.owner_id);
+
         const businessInfo: BusinessInforDTO = {
-            code: business?.code,
-            name_vietnamese: business?.name_vietnamese,
-            name_english: business?.name_english,
-            name_acronym: business?.name_acronym,
-            address: business?.address,
-            phone: business?.phone,
-            email: business?.email,
-            website: business?.website,
-            fax: business?.fax,
-            chartered_capital: business?.chartered_capital,
-            type_of_organization: business?.type_of_organization,
-            status: business?.status,
-            legal_representative: representative?.name,
-            owner: owner?.name,
-            employee: employees,
+            code: business.code,
+            name_vietnamese: business.name_vietnamese,
+            name_english: business.name_english,
+            name_acronym: business.name_acronym,
+            address: business.address,
+            phone: business.phone,
+            email: business.email,
+            website: business.website,
+            fax: business.fax,
+            chartered_capital: business.chartered_capital,
+            type_of_organization: business.type_of_organization,
+            status: business.status,
             number_of_employees,
-            created_at: business?.created_at,
+            legal_representative: {
+                citizen_id: representative.citizen_id,
+                name: representative.name,
+                birth_date: representative.birth_date.toString(),
+                gender: representative.gender,
+                nationality: representative.nationality,
+                religion: representative.religion,
+                type_of_certificate: representative.type_of_certificate,
+                issued_by: representative.issued_by,
+                issued_date: representative.issued_date.toString(),
+                hometown: representative.hometown,
+                current_address: representative.current_address,
+                created_at: representative.created_at.toString(),
+            },
+            owner: {
+                citizen_id: owner.citizen_id,
+                name: owner.name,
+                birth_date: owner.birth_date.toString(),
+                gender: owner.gender,
+                nationality: owner.nationality,
+                religion: owner.religion,
+                type_of_certificate: owner.type_of_certificate,
+                issued_by: owner.issued_by,
+                issued_date: owner.issued_date.toString(),
+                hometown: owner.hometown,
+                current_address: owner.current_address,
+                created_at: owner.created_at.toString(),
+            },
+            created_at: business.created_at.toString(),
         };
         return businessInfo;
     }
@@ -478,7 +513,7 @@ export class BusinessesService {
 
     private async getLicenseStatus(business_code: string): Promise<string[]> {
         const licenses =
-            await this.businessLicenseService.findOne(business_code);
+            await this.businessLicensesService.findOne(business_code);
         //Nếu không có giấy phép thì trả về mảng rỗng
         if (!!licenses) {
             return [

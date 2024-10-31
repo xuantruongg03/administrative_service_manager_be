@@ -1,5 +1,3 @@
-import { EmployeeDTO } from 'src/modules/employees/dto/employee.dto';
-
 export class BusinessDTO {
     code: string;
     name_vietnamese: string;
@@ -22,6 +20,21 @@ export class BusinessDTO {
     number_of_employees: number;
 }
 
+export class PersonForBusinessDTO {
+    citizen_id: string;
+    name: string;
+    birth_date: string;
+    gender: string;
+    nationality: string;
+    religion: string;
+    type_of_certificate: string;
+    issued_by: string;
+    issued_date: string;
+    hometown: string;
+    current_address: string;
+    created_at: string;
+}
+
 export class BusinessInforDTO {
     code: string;
     name_vietnamese: string;
@@ -34,12 +47,11 @@ export class BusinessInforDTO {
     website: string;
     chartered_capital: string;
     type_of_organization: string;
-    owner: string;
-    legal_representative: string;
+    owner: PersonForBusinessDTO;
+    legal_representative: PersonForBusinessDTO;
     number_of_employees: number;
+    created_at: string;
     status: string;
-    employee: EmployeeDTO[];
-    created_at: Date;
 }
 
 export class BusinessMapDTO {

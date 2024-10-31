@@ -1,13 +1,13 @@
 import { Business } from 'src/modules/businesses/entities/businesses.entity';
 import { LicenseType } from 'src/modules/license-type/entities/license-type.entity';
 import {
-    Entity,
     Column,
-    PrimaryColumn,
     CreateDateColumn,
-    UpdateDateColumn,
-    ManyToOne,
+    Entity,
     JoinColumn,
+    ManyToOne,
+    PrimaryColumn,
+    UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('business_licenses')
@@ -28,9 +28,6 @@ export class BusinessLicense {
     @ManyToOne(() => LicenseType)
     @JoinColumn({ name: 'license_type_id' })
     licenseType: LicenseType;
-
-    @Column({ nullable: true })
-    license_number: string;
 
     @Column()
     file_path: string;

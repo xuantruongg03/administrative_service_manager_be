@@ -1,15 +1,14 @@
-import {
-    Entity,
-    Column,
-    PrimaryColumn,
-    CreateDateColumn,
-    UpdateDateColumn,
-    ManyToOne,
-    JoinColumn,
-} from 'typeorm';
-import { Person } from '../../persons/entities/persons.entity';
-import { Business } from '../../businesses/entities/businesses.entity';
 import CONSTANTS from 'src/common/constants';
+import {
+    Column,
+    CreateDateColumn,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    PrimaryColumn,
+    UpdateDateColumn,
+} from 'typeorm';
+import { Business } from '../../businesses/entities/businesses.entity';
 
 @Entity('employees')
 export class Employee {
@@ -19,9 +18,8 @@ export class Employee {
     @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
     citizen_id: string;
 
-    @ManyToOne(() => Person)
-    @JoinColumn({ name: 'citizen_id' })
-    person: Person;
+    @Column()
+    name: string;
 
     @Column()
     position: string;
