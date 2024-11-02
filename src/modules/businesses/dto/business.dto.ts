@@ -1,3 +1,5 @@
+import { BusinessLicenseDto } from 'src/modules/bussiness-licenses/dto/business-license.dto';
+
 export class BusinessDTO {
     code: string;
     name_vietnamese: string;
@@ -11,7 +13,7 @@ export class BusinessDTO {
     chartered_capital: string;
     type_of_organization: string;
     owner_id: string;
-    legal_representative: string;
+    legal_representative_id: string;
     latitude: number;
     longitude: number;
     status: string;
@@ -21,6 +23,7 @@ export class BusinessDTO {
 }
 
 export class PersonForBusinessDTO {
+    id: string;
     citizen_id: string;
     name: string;
     birth_date: string;
@@ -36,6 +39,7 @@ export class PersonForBusinessDTO {
 }
 
 export class BusinessInforDTO {
+    id: string;
     code: string;
     name_vietnamese: string;
     name_english: string;
@@ -52,6 +56,7 @@ export class BusinessInforDTO {
     number_of_employees: number;
     created_at: string;
     status: string;
+    licenses: BusinessLicenseDto[];
 }
 
 export class BusinessMapDTO {

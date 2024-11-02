@@ -15,7 +15,7 @@ export class Employee {
     @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
     id: string;
 
-    @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
+    @Column()
     citizen_id: string;
 
     @Column()

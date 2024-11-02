@@ -1,8 +1,8 @@
-import { Injectable, forwardRef, Inject } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { parseDate } from 'src/common/format';
 import { GeocodingService } from 'src/shared/geocoding.service';
-import { ILike, Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
 import { BussinessLicensesService } from '../bussiness-licenses/bussiness-licenses.service';
 import { EmployeesService } from '../employees/employees.service';
@@ -11,14 +11,9 @@ import { Person } from '../persons/entities/persons.entity';
 import { PersonsService } from '../persons/persons.service';
 import { TypeOfOrganization } from '../type-of-organizations/entities/type-of-organization.entity';
 import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
-import {
-    BusinessDTO,
-    BusinessInforDTO,
-    BusinessMapDTO,
-    MapData,
-} from './dto/business.dto';
+import { BusinessInforDTO, BusinessMapDTO, MapData } from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
-import { Not } from 'typeorm';
+import CONSTANTS from 'src/common/constants';
 
 @Injectable()
 export class BusinessesService {
@@ -35,6 +30,19 @@ export class BusinessesService {
         private readonly businessLicensesService: BussinessLicensesService,
         private readonly licenseTypeService: LicenseTypeService,
     ) {}
+
+    public async generateId() {
+        const id = Math.random()
+            .toString(36)
+            .substring(2, CONSTANTS.LENGTH_ID + 2);
+        const isExist = await this.businessRepository.findOne({
+            where: { id: id },
+        });
+        if (isExist) {
+            return this.generateId();
+        }
+        return id;
+    }
 
     async create(business: Business) {
         const check = await this.checkBusinessData(business);
@@ -122,6 +130,7 @@ export class BusinessesService {
             return check;
         }
         const person = new Person();
+        person.id = await this.personsService.generateId();
         person.citizen_id = data['CCCD người đại diện'].toString();
         person.name = data['Tên người đại diện'];
         person.birth_date = parseDate(data['Ngày sinh người đại diện']);
@@ -142,6 +151,7 @@ export class BusinessesService {
             return check;
         }
         const person = new Person();
+        person.id = await this.personsService.generateId();
         person.citizen_id = data['CCCD người sở hữu'].toString();
         person.name = data['Tên người sở hữu'];
         person.type_of_certificate = data['Loại giấy tờ người sở hữu'];
@@ -162,6 +172,7 @@ export class BusinessesService {
             return check;
         }
         const business = new Business();
+        business.id = await this.generateId();
         business.code = data['Mã doanh nghiệp'].toString();
         business.name_vietnamese = data['Tên doanh nghiệp (VN)'];
         business.name_english = data['Tên doanh nghiệp (EN)'] || '';
@@ -170,6 +181,7 @@ export class BusinessesService {
         business.phone = data['Số điện thoại'];
         business.email = data['Email'] || '';
         business.website = data['Website'] || '';
+        business.created_at = parseDate(data['Ngày đăng ký']);
         business.fax = data['Fax'] || '';
         business.chartered_capital = data['Vốn điều lệ'];
         business.type_of_organization = await this.typeOfOrganizationsService
@@ -190,6 +202,7 @@ export class BusinessesService {
     }
 
     private async isBusinessExist(
+        id: string,
         code: string,
         name_vietnamese: string,
     ): Promise<boolean> {
@@ -199,7 +212,7 @@ export class BusinessesService {
 
         try {
             const business = await this.businessRepository.findOne({
-                where: { code, name_vietnamese },
+                where: { code, name_vietnamese, id },
             });
             return business !== null && business !== undefined;
         } catch (error) {
@@ -247,6 +260,7 @@ export class BusinessesService {
             }
             //check exist business
             const isExistBusiness = await this.isBusinessExist(
+                business.id,
                 business.code,
                 business.name_vietnamese,
             );
@@ -256,48 +270,60 @@ export class BusinessesService {
         }
     }
 
-    async findAll(
-        page: number,
-        limit: number,
-        keyword: string,
-    ): Promise<{
-        data: BusinessDTO[];
-        totalPages: number;
-        isLastPage: boolean;
-        totalRecords: number;
-    }> {
+    async findAll(page: number, limit: number, keyword: string) {
         const validPage = Math.max(1, page);
         const validLimit = Math.max(1, limit);
-        let query = this.businessRepository.createQueryBuilder('business');
-        if (keyword && keyword.trim() !== '') {
-            query = query.where([
-                { name_vietnamese: ILike(`%${keyword}%`) },
-                { name_english: ILike(`%${keyword}%`) },
-                { name_acronym: ILike(`%${keyword}%`) },
-                { address: ILike(`%${keyword}%`) },
-                { code: ILike(`%${keyword}%`) },
-            ]);
+
+        try {
+            let [rs, totalRecords] = await this.businessRepository.findAndCount(
+                {
+                    skip: (validPage - 1) * validLimit,
+                    take: validLimit,
+                    order: {
+                        created_at: 'DESC',
+                    },
+                },
+            );
+            // Nếu có keyword thì mới thêm điều kiện tìm kiếm
+            if (keyword && keyword.trim() !== '') {
+                const [filteredRs, filteredTotal] =
+                    await this.businessRepository.findAndCount({
+                        where: [
+                            { name_vietnamese: ILike(`%${keyword}%`) },
+                            { name_english: ILike(`%${keyword}%`) },
+                            { name_acronym: ILike(`%${keyword}%`) },
+                            { address: ILike(`%${keyword}%`) },
+                            { code: ILike(`%${keyword}%`) },
+                        ],
+                        skip: (validPage - 1) * validLimit,
+                        take: validLimit,
+                        order: {
+                            created_at: 'DESC',
+                        },
+                    });
+                rs = filteredRs;
+                totalRecords = filteredTotal;
+            }
+
+            const totalPages = Math.ceil(totalRecords / validLimit);
+            const isLastPage = totalRecords <= validPage * validLimit;
+
+            const data = await Promise.all(
+                rs.map(async (business) => {
+                    const employee_of_business =
+                        await this.employeesService.findAllByBusinessCode(
+                            business.code,
+                        );
+                    const number_of_employees = employee_of_business.length;
+                    return { ...business, number_of_employees };
+                }),
+            );
+
+            return { data, totalPages, isLastPage, totalRecords };
+        } catch (error) {
+            console.error('Error in findAll:', error);
+            throw error;
         }
-
-        const [rs, totalRecords] = await query
-            .skip((validPage - 1) * validLimit)
-            .take(validLimit)
-            .getManyAndCount();
-
-        const totalPages = Math.ceil(totalRecords / validLimit);
-        const isLastPage = totalRecords <= validPage * validLimit;
-
-        const data = await Promise.all(
-            rs.map(async (business) => {
-                const employee_of_business =
-                    await this.employeesService.findAllByBusinessCode(
-                        business.code,
-                    );
-                const number_of_employees = employee_of_business.length;
-                return { ...business, number_of_employees };
-            }),
-        );
-        return { data, totalPages, isLastPage, totalRecords };
     }
 
     async exportBusinessToExcel() {
@@ -305,10 +331,11 @@ export class BusinessesService {
         const workbook = XLSX.utils.book_new();
         const worksheetData = await Promise.all(
             businesses.map(async (business) => {
-                const representative = await this.personsService.findOne(
-                    business.legal_representative,
-                );
-                const owner = await this.personsService.findOne(
+                const representative =
+                    await this.personsService.findByCitizenId(
+                        business.legal_representative,
+                    );
+                const owner = await this.personsService.findByCitizenId(
                     business.owner_id,
                 );
                 const type_of_organization =
@@ -372,12 +399,12 @@ export class BusinessesService {
         };
     }
 
-    async findOne(code: string): Promise<BusinessInforDTO | null> {
-        if (!code || code.trim() === '') {
+    async findOne(id: string): Promise<BusinessInforDTO | null> {
+        if (!id || id.trim() === '') {
             return null;
         }
         const business = await this.businessRepository.findOne({
-            where: { code },
+            where: { id },
         });
 
         if (!business) {
@@ -387,14 +414,18 @@ export class BusinessesService {
         const representative = await this.personsService.findOne(
             business.legal_representative,
         );
-
         const owner = await this.personsService.findOne(business.owner_id);
-
-        const employees =
-            await this.employeesService.findAllByBusinessCode(code);
+        const employees = await this.employeesService.findAllByBusinessCode(
+            business.code,
+        );
         const number_of_employees = employees.length;
 
+        const licenses = await this.businessLicensesService.findOne(
+            business.code,
+        );
+
         const businessInfo: BusinessInforDTO = {
+            id: business.id,
             code: business.code,
             name_vietnamese: business.name_vietnamese,
             name_english: business.name_english,
@@ -409,6 +440,7 @@ export class BusinessesService {
             status: business.status,
             number_of_employees,
             legal_representative: {
+                id: representative.id,
                 citizen_id: representative.citizen_id,
                 name: representative.name,
                 birth_date: representative.birth_date.toString(),
@@ -423,6 +455,7 @@ export class BusinessesService {
                 created_at: representative.created_at.toString(),
             },
             owner: {
+                id: owner.id,
                 citizen_id: owner.citizen_id,
                 name: owner.name,
                 birth_date: owner.birth_date.toString(),
@@ -437,19 +470,92 @@ export class BusinessesService {
                 created_at: owner.created_at.toString(),
             },
             created_at: business.created_at.toString(),
+            licenses,
         };
         return businessInfo;
     }
 
-    async update(code: string, business: BusinessInforDTO) {
-        console.log(business);
-        // const rs = await this.businessRepository.update(code, business);
-        // return rs;
+    async update(id: string, business: BusinessInforDTO) {
+        try {
+            const businessToUpdate = await this.businessRepository.findOne({
+                where: { id },
+            });
+
+            if (!businessToUpdate) {
+                return 'Business not found';
+            }
+
+            // Find persons by citizen_id first
+            const representative = await this.personsService.findOne(
+                business.legal_representative.id,
+            );
+            const owner = await this.personsService.findOne(business.owner.id);
+            if (!representative || !owner) {
+                return 'Representative or owner not found';
+            }
+
+            // Update business with person IDs
+            businessToUpdate.legal_representative = representative.id;
+            businessToUpdate.owner_id = owner.id;
+
+            // Update business fields
+            Object.assign(businessToUpdate, {
+                name_vietnamese: business.name_vietnamese,
+                name_english: business.name_english,
+                name_acronym: business.name_acronym,
+                chartered_capital: business.chartered_capital,
+                address: business.address,
+                phone: business.phone,
+                email: business.email,
+                website: business.website,
+                type_of_organization: business.type_of_organization,
+                status: business.status,
+            });
+
+            // Update coordinates if address changed
+            if (business.address !== businessToUpdate.address) {
+                const coordinates = await this.geocodingService.getCoordinates(
+                    business.address,
+                );
+                businessToUpdate.latitude = coordinates.latitude;
+                businessToUpdate.longitude = coordinates.longitude;
+            }
+
+            // Update legal representative through PersonsService
+            await this.personsService.update(representative.id, {
+                citizen_id: business.legal_representative.citizen_id,
+                name: business.legal_representative.name,
+                birth_date: new Date(business.legal_representative.birth_date),
+                gender: business.legal_representative.gender,
+                nationality: business.legal_representative.nationality,
+                religion: business.legal_representative.religion,
+                hometown: business.legal_representative.hometown,
+                current_address: business.legal_representative.current_address,
+            });
+
+            // Update owner through PersonsService
+            await this.personsService.update(business.owner.citizen_id, {
+                citizen_id: business.owner.citizen_id,
+                name: business.owner.name,
+                birth_date: new Date(business.owner.birth_date),
+                gender: business.owner.gender,
+                nationality: business.owner.nationality,
+                religion: business.owner.religion,
+                hometown: business.owner.hometown,
+                current_address: business.owner.current_address,
+            });
+
+            await this.businessRepository.save(businessToUpdate);
+            return true;
+        } catch (error) {
+            console.error('Error updating business:', error);
+            throw new Error('Failed to update business: ' + error.message);
+        }
     }
 
-    async remove(code: string[]) {
-        const deletePromises = code.map((c) => {
-            this.businessRepository.softDelete(c);
+    async remove(ids: string[]) {
+        const deletePromises = ids.map((id) => {
+            this.businessRepository.softDelete(id);
         });
         await Promise.all(deletePromises);
         return true;
@@ -526,9 +632,7 @@ export class BusinessesService {
         const mandatoryLicenses = await this.licenseTypeService.findMandatory();
         const missingLicenses = [];
         for (const l of mandatoryLicenses) {
-            const license = licenses.find(
-                (license) => license.licenseType.name === l.name,
-            );
+            const license = licenses.find((license) => license.name === l.name);
             if (!license) {
                 missingLicenses.push(l.name);
             }

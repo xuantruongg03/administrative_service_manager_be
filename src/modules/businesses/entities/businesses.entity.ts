@@ -15,6 +15,9 @@ import CONSTANTS from 'src/common/constants';
 @Entity('businesses')
 export class Business {
     @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
+    id: string;
+
+    @Column({ length: CONSTANTS.LENGTH_ID, unique: true })
     code: string;
 
     @Column()

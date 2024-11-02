@@ -2,10 +2,11 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BusinessLicense } from './entities/business-licenses.entity';
-import { CreateBusinessLicenseDto } from './dto/create-business-license.dto';
+import { BusinessLicenseDto } from './dto/business-license.dto';
 import { StorageService } from 'src/shared/storage/storage.service';
 import { BusinessesService } from '../businesses/businesses.service';
 import { LicenseTypeService } from '../license-type/license-type.service';
+import CONSTANTS from 'src/common/constants';
 
 @Injectable()
 export class BussinessLicensesService {
@@ -18,47 +19,24 @@ export class BussinessLicensesService {
         private readonly licenseTypeService: LicenseTypeService,
     ) {}
 
-    async findOne(business_code: string) {
-        const license = await this.businessLicenseRepository.find({
-            where: {
-                business_code,
-            },
+    async findOne(business_code: string): Promise<BusinessLicenseDto[]> {
+        const license = await this.businessLicenseRepository.findBy({
+            business_code,
         });
-        return license;
-    }
-
-    async create(file: Express.Multer.File, data: CreateBusinessLicenseDto) {
-        try {
-            //Get name business from code
-            const business = await this.businessesService.findOne(
-                data.business_code,
-            );
-            if (!business) {
-                return 'Business not found';
-            }
-            const name = business.name_vietnamese;
-            //Get name license type
-            const license_type = await this.licenseTypeService.findOne(
-                data.license_type_id,
-            );
-            if (!license_type) {
-                return 'License type not found';
-            }
-            const name_file = `${data.business_code}-${license_type.name}-${name}`;
-            //Save file to storage
-            const file_path = await this.storageService.uploadFile(
-                file,
-                name_file,
-            );
-            const license = await this.businessLicenseRepository.create({
-                ...data,
-                file_path,
-            });
-            return await this.businessLicenseRepository.save(license);
-        } catch (error) {
-            console.log(error);
-            return 'Failed to create business license';
-        }
+        const licenses = await Promise.all(
+            license.map(async (license) => {
+                const nameLicense = await this.licenseTypeService.findById(
+                    license.license_type_id,
+                );
+                return {
+                    id: license.id,
+                    name: license.name,
+                    status: license.status,
+                    type: nameLicense.name,
+                };
+            }),
+        );
+        return licenses;
     }
 
     async update(
@@ -80,7 +58,7 @@ export class BussinessLicensesService {
         }
     }
 
-    async remove(id: string): Promise<boolean | string> {
+    async delete(id: string): Promise<boolean | string> {
         try {
             const result = await this.businessLicenseRepository.delete(id);
             if (result.affected === 0) {
@@ -91,5 +69,96 @@ export class BussinessLicensesService {
             console.log(error);
             return 'Failed to delete business license';
         }
+    }
+
+    async generateId() {
+        const id = Math.random()
+            .toString(36)
+            .substring(2, CONSTANTS.LENGTH_ID + 2);
+        const isExist = await this.businessLicenseRepository.findOne({
+            where: { id: id },
+        });
+        if (isExist) {
+            return this.generateId();
+        }
+        return id;
+    }
+
+    async createLicense(
+        file: Express.Multer.File,
+        businessCode: string,
+        licenseType: string,
+    ) {
+        const business = await this.businessesService.findOne(businessCode);
+        if (!business) {
+            return 'Business not found';
+        }
+        try {
+            let nameType = '';
+            if (licenseType === CONSTANTS.LICENSE_TYPE.BUSINESS)
+                nameType = 'Giấy phép kinh doanh';
+            if (licenseType === CONSTANTS.LICENSE_TYPE.SECURITY)
+                nameType = 'Giấy phép an ninh trật tự';
+            if (licenseType === CONSTANTS.LICENSE_TYPE.FIRE)
+                nameType = 'Giấy phép phòng cháy chữa cháy';
+            const name = business.name_vietnamese;
+            const name_file = `${businessCode}-${nameType}-${name}`;
+            const file_path = await this.storageService.uploadFile(
+                file,
+                name_file,
+            );
+            const license_type =
+                await this.licenseTypeService.findByName(licenseType);
+            if (!license_type) {
+                return 'License type not found';
+            }
+            const id = await this.generateId();
+            const license = await this.businessLicenseRepository.create({
+                business_code: businessCode,
+                file_path,
+                id,
+                license_type_id: license_type.id,
+                status: 'normal',
+                name: name_file,
+            });
+            await this.businessLicenseRepository.save(license);
+            return true;
+        } catch (error) {
+            console.log(error);
+            return `Failed to create ${licenseType.toLowerCase()}`;
+        }
+    }
+
+    async createBusinessLicense(
+        file: Express.Multer.File,
+        businessCode: string,
+    ) {
+        return this.createLicense(
+            file,
+            businessCode,
+            CONSTANTS.LICENSE_TYPE.BUSINESS,
+        );
+    }
+
+    async createSecurityLicense(
+        file: Express.Multer.File,
+        businessCode: string,
+    ) {
+        return this.createLicense(
+            file,
+            businessCode,
+            CONSTANTS.LICENSE_TYPE.SECURITY,
+        );
+    }
+
+    async createFirePreventionLicense(
+        file: Express.Multer.File,
+        businessCode: string,
+    ) {
+        return this.createLicense(
+            file,
+            businessCode,
+            CONSTANTS.LICENSE_TYPE.FIRE,
+        );
     }
 }

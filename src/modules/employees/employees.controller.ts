@@ -12,7 +12,7 @@ import {
     UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { return_error_400, return_success } from 'src/common/return';
+import { return_success } from 'src/common/return';
 import { CreateEmployeeDTO } from './dto/employee.dto';
 import { EmployeesService } from './employees.service';
 import CONSTANTS from 'src/common/constants';
@@ -23,7 +23,7 @@ export class EmployeesController {
     @Get()
     findAll(@Query() query: { businessCode: string }) {
         if (!query.businessCode) {
-            return return_error_400('Business code is required');
+            throw new BadRequestException('Business code is required');
         }
         return this.employeesService.findAllByBusinessCode(query.businessCode);
     }
@@ -35,19 +35,16 @@ export class EmployeesController {
         @Query() query: { businessCode: string },
     ) {
         if (!query.businessCode) {
-            return new BadRequestException('Business code is required');
+            throw new BadRequestException('Business code is required');
         }
         const rs = await this.employeesService.createPersonByExcel(
             file,
             query.businessCode,
         );
         if (typeof rs === 'string') {
-            return new BadRequestException(rs);
+            throw new BadRequestException(rs);
         }
-        return {
-            code: 200,
-            message: 'Create employees successfully',
-        };
+        return return_success('Create employees successfully');
     }
 
     @Get('/employee-info/:businessCode')
@@ -59,7 +56,7 @@ export class EmployeesController {
         const pageNumber = Number(page);
         let limitNumber = Number(limit);
         if (!page) {
-            return return_error_400('Page are required');
+            throw new BadRequestException('Page are required');
         }
         if (!limitNumber) {
             limitNumber = CONSTANTS.LIMIT_BUSINESS_PER_PAGE;

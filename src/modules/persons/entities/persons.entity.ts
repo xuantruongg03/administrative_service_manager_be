@@ -11,6 +11,9 @@ import CONSTANTS from 'src/common/constants';
 @Entity('persons')
 export class Person {
     @PrimaryColumn({ length: CONSTANTS.LENGTH_ID })
+    id: string;
+
+    @Column({ unique: true })
     citizen_id: string;
 
     @Column()

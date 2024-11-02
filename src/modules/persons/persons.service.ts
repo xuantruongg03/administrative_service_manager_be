@@ -5,6 +5,7 @@ import { UpdatePersonDto } from './dto/update-person.dto';
 import { Person } from './entities/persons.entity';
 import { BusinessesService } from '../businesses/businesses.service';
 import { EmployeesService } from '../employees/employees.service';
+import CONSTANTS from 'src/common/constants';
 
 @Injectable()
 export class PersonsService {
@@ -17,26 +18,38 @@ export class PersonsService {
         private readonly employeesService: EmployeesService,
     ) {}
 
-    create(person: Person) {
+    async create(person: Person) {
+        person.id = await this.generateId();
         return this.personRepository.save(person);
     }
 
-    findAll() {
-        return `This action returns all persons`;
+    public async generateId(): Promise<string> {
+        const id = Math.random()
+            .toString(36)
+            .substring(2, CONSTANTS.LENGTH_ID + 2);
+        const isExist = await this.personRepository.findOne({
+            where: { id },
+        });
+        if (isExist) {
+            return this.generateId();
+        }
+        return id;
     }
 
-    async findOne(citizen_id: string): Promise<Person | null> {
+    async findOne(id: string): Promise<Person | null> {
         return await this.personRepository.findOne({
-            where: { citizen_id: citizen_id },
+            where: { id },
         });
     }
 
-    update(id: number, updatePersonDto: UpdatePersonDto) {
-        return `This action updates a #${id} person`;
+    async findByCitizenId(citizen_id: string): Promise<Person | null> {
+        return await this.personRepository.findOne({
+            where: { citizen_id },
+        });
     }
 
-    remove(id: number) {
-        return `This action removes a #${id} person`;
+    async update(id: string, updatePersonDto: UpdatePersonDto) {
+        return this.personRepository.update(id, updatePersonDto);
     }
 
     async isPersonExist(citizen_id: string): Promise<boolean> {
@@ -45,7 +58,7 @@ export class PersonsService {
         }
 
         const person = await this.personRepository.findOne({
-            where: { citizen_id: citizen_id },
+            where: { citizen_id },
         });
         return person !== null && person !== undefined;
     }

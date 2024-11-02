@@ -15,6 +15,9 @@ export class BusinessLicense {
     @PrimaryColumn({ length: 12 })
     id: string;
 
+    @Column({ length: 100 })
+    name: string;
+
     @Column({ length: 12 })
     business_code: string;
 

@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LicenseType } from './entities/license-type.entity';
+import CONSTANTS from 'src/common/constants';
 
 @Injectable()
 export class LicenseTypeService implements OnModuleInit {
@@ -21,12 +22,17 @@ export class LicenseTypeService implements OnModuleInit {
         const licenseTypes = [
             {
                 id: '102318673847',
-                name: 'Business License',
+                name: CONSTANTS.LICENSE_TYPE.BUSINESS,
                 is_mandatory: true,
             },
             {
                 id: '102318673848',
-                name: 'Security License',
+                name: CONSTANTS.LICENSE_TYPE.SECURITY,
+                is_mandatory: true,
+            },
+            {
+                id: '102318673849',
+                name: CONSTANTS.LICENSE_TYPE.FIRE,
                 is_mandatory: true,
             },
         ];
@@ -49,5 +55,21 @@ export class LicenseTypeService implements OnModuleInit {
             },
         });
         return licenseType;
+    }
+
+    async findByName(name: string) {
+        return await this.licenseTypeRepository.findOne({
+            where: {
+                name,
+            },
+        });
+    }
+
+    async findById(id: string) {
+        return await this.licenseTypeRepository.findOne({
+            where: {
+                id,
+            },
+        });
     }
 }

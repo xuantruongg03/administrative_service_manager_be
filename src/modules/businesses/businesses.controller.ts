@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     Delete,
@@ -14,7 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import CONSTANTS from 'src/common/constants';
-import { return_error_400, return_success } from 'src/common/return';
+import { return_success } from 'src/common/return';
 import { BusinessesService } from './businesses.service';
 import { BusinessInforDTO } from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
@@ -27,7 +28,7 @@ export class BusinessesController {
     async create(@Body() business: Business) {
         const rs = await this.businessesService.create(business);
         if (typeof rs === 'string') {
-            return return_error_400(rs);
+            throw new BadRequestException(rs);
         }
         return return_success('Business created successfully');
     }
@@ -37,7 +38,7 @@ export class BusinessesController {
     async createBusinessByExcel(@UploadedFile() file: Express.Multer.File) {
         const rs = await this.businessesService.createBusinessByExcel(file);
         if (typeof rs === 'string') {
-            return return_error_400(rs);
+            throw new BadRequestException(rs);
         }
         return return_success('Businesses created successfully');
     }
@@ -66,7 +67,7 @@ export class BusinessesController {
         const pageNumber = Number(page);
         let limitNumber = Number(limit);
         if (!page) {
-            return return_error_400('Page are required');
+            throw new BadRequestException('Page are required');
         }
         if (!limitNumber) {
             limitNumber = CONSTANTS.LIMIT_BUSINESS_PER_PAGE;
@@ -79,22 +80,26 @@ export class BusinessesController {
         return return_success('Businesses fetched successfully', rs);
     }
 
-    @Patch(':code')
-    update(@Param('code') code: string, @Body() business: BusinessInforDTO) {
-        if (!code) {
-            return return_error_400('Code are required');
+    @Patch(':id')
+    async update(@Param('id') id: string, @Body() business: BusinessInforDTO) {
+        if (!id) {
+            throw new BadRequestException('Business id is required');
         }
-        return this.businessesService.update(code, business);
+        const rs = await this.businessesService.update(id, business);
+        if (typeof rs === 'string') {
+            throw new BadRequestException(rs);
+        }
+        return return_success('Business updated successfully');
     }
 
     @Delete()
     async remove(@Body() ids: string[]) {
         if (!ids || ids.length === 0) {
-            return return_error_400('ids are required');
+            throw new BadRequestException('ids are required');
         }
         const rs = await this.businessesService.remove(ids);
         if (typeof rs === 'string') {
-            return return_error_400(rs);
+            throw new BadRequestException(rs);
         }
         return return_success('Businesses deleted successfully');
     }
@@ -105,7 +110,7 @@ export class BusinessesController {
         const pageNumber = Number(page);
         let limitNumber = Number(limit);
         if (!page) {
-            return return_error_400('Page is required');
+            throw new BadRequestException('Page is required');
         }
         if (!limitNumber) {
             limitNumber = CONSTANTS.LIMIT_BUSINESS_PER_PAGE;
@@ -123,12 +128,12 @@ export class BusinessesController {
         return return_success('Businesses fetched successfully', rs);
     }
 
-    @Get(':code')
-    async findOne(@Param('code') code: string) {
-        if (!code) {
-            return return_error_400('Code are required');
+    @Get(':id')
+    async findOne(@Param('id') id: string) {
+        if (!id) {
+            throw new BadRequestException('id are required');
         }
-        const rs = await this.businessesService.findOne(code);
+        const rs = await this.businessesService.findOne(id);
         return return_success('Business fetched successfully', rs);
     }
 }

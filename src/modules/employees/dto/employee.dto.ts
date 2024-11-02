@@ -1,7 +1,7 @@
 export class EmployeeDTO {
     id: string;
-    name: string;
     citizen_id: string;
+    name: string;
     position: string;
     phone: string;
     start_date: Date;
@@ -11,6 +11,7 @@ export class EmployeeDTO {
 
 export class CreateEmployeeDTO {
     citizen_id: string;
+    employee_id: string;
     name: string;
     position: string;
     phone: string;
