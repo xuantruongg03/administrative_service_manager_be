@@ -40,6 +40,8 @@ import { GeocodingService } from './shared/geocoding.service';
                 TypeOfOrganization,
             ],
             synchronize: true,
+            // logging: true,
+            // logger: 'advanced-console',
         }),
         TypeOrmModule.forFeature([
             Business,

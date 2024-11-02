@@ -9,7 +9,7 @@ export class StorageService {
     async uploadFile(
         file: Express.Multer.File,
         name?: string,
-    ): Promise<string> {
+    ): Promise<{ file_path: string; size: number }> {
         const fileExt = path.extname(file.originalname);
         const fileName = name
             ? `${name}${fileExt}`
@@ -17,6 +17,6 @@ export class StorageService {
         const filePath = path.join(this.uploadDir, fileName);
         await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, file.buffer);
-        return `/uploads/${fileName}`;
+        return { file_path: `${fileName}`, size: file.size };
     }
 }

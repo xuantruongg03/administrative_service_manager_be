@@ -30,11 +30,11 @@ export class Employee {
     @Column()
     start_date: Date;
 
-    @Column({ length: 12 })
-    business_code: string;
+    @Column({ length: CONSTANTS.LENGTH_ID })
+    business_id: string;
 
     @ManyToOne(() => Business)
-    @JoinColumn({ name: 'business_code' })
+    @JoinColumn({ name: 'business_id' })
     business: Business;
 
     @CreateDateColumn()

@@ -3,9 +3,9 @@ const CONSTANTS = {
     LIMIT_BUSINESS_PER_PAGE: 10,
     LENGTH_ID: 12,
     LICENSE_TYPE: {
-        BUSINESS: 'Business License',
-        SECURITY: 'Security License',
-        FIRE: 'Fire Prevention License',
+        BUSINESS: 'Giấy phép kinh doanh',
+        SECURITY: 'Giấy phép ANTT',
+        FIRE: 'Giấy phép PCCC',
     },
 };
 

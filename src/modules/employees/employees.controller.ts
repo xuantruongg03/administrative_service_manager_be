@@ -21,25 +21,25 @@ import CONSTANTS from 'src/common/constants';
 export class EmployeesController {
     constructor(private readonly employeesService: EmployeesService) {}
     @Get()
-    findAll(@Query() query: { businessCode: string }) {
-        if (!query.businessCode) {
-            throw new BadRequestException('Business code is required');
+    findAll(@Query() query: { businessId: string }) {
+        if (!query.businessId) {
+            throw new BadRequestException('Business id is required');
         }
-        return this.employeesService.findAllByBusinessCode(query.businessCode);
+        return this.employeesService.findAllByBusinessId(query.businessId);
     }
 
     @Post('create-by-excel')
     @UseInterceptors(FileInterceptor('file'))
     async createEmployeeByExcel(
         @UploadedFile() file: Express.Multer.File,
-        @Query() query: { businessCode: string },
+        @Query() query: { businessId: string },
     ) {
-        if (!query.businessCode) {
-            throw new BadRequestException('Business code is required');
+        if (!query.businessId) {
+            throw new BadRequestException('Business id is required');
         }
         const rs = await this.employeesService.createPersonByExcel(
             file,
-            query.businessCode,
+            query.businessId,
         );
         if (typeof rs === 'string') {
             throw new BadRequestException(rs);
@@ -47,9 +47,9 @@ export class EmployeesController {
         return return_success('Create employees successfully');
     }
 
-    @Get('/employee-info/:businessCode')
+    @Get('/employee-info/:businessId')
     async getEmployeeInfo(
-        @Param('businessCode') businessCode: string,
+        @Param('businessId') businessId: string,
         @Query() query: { page: number; limit: number },
     ) {
         const { page, limit } = query;
@@ -62,22 +62,19 @@ export class EmployeesController {
             limitNumber = CONSTANTS.LIMIT_BUSINESS_PER_PAGE;
         }
         const rs = await this.employeesService.getEmployeeInfoWithPagination(
-            businessCode,
+            businessId,
             pageNumber,
             limitNumber,
         );
         return return_success('Get employee info successfully', rs);
     }
 
-    @Post('/create/:businessCode')
+    @Post('/create/:businessId')
     async createEmployeeInfo(
-        @Param('businessCode') businessCode: string,
+        @Param('businessId') businessId: string,
         @Body() body: CreateEmployeeDTO,
     ) {
-        const rs = await this.employeesService.createEmployee(
-            businessCode,
-            body,
-        );
+        const rs = await this.employeesService.createEmployee(businessId, body);
         if (typeof rs === 'string') {
             throw new BadRequestException(rs);
         }
@@ -93,14 +90,14 @@ export class EmployeesController {
         return return_success('Delete employee info successfully');
     }
 
-    @Put('/:businessCode/:citizen_id')
+    @Put('/:businessId/:citizen_id')
     async updateEmployeeInfo(
-        @Param('businessCode') businessCode: string,
+        @Param('businessId') businessId: string,
         @Param('citizen_id') citizen_id: string,
         @Body() body: CreateEmployeeDTO,
     ) {
         const rs = await this.employeesService.updateEmployee(
-            businessCode,
+            businessId,
             citizen_id,
             body,
         );

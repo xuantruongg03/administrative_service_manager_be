@@ -2,8 +2,10 @@ import {
     BadRequestException,
     Controller,
     Delete,
+    Get,
     Param,
     Post,
+    Query,
     UploadedFile,
     UseInterceptors,
 } from '@nestjs/common';
@@ -17,15 +19,15 @@ export class BussinessLicensesController {
         private readonly businessLicensesService: BussinessLicensesService,
     ) {}
 
-    @Post('/business-license/:businessCode/upload')
+    @Post('/business-license/:businessId/upload')
     @UseInterceptors(FileInterceptor('file'))
     async createBusinessLicense(
         @UploadedFile() file: Express.Multer.File,
-        @Param('businessCode') businessCode: string,
+        @Param('businessId') businessId: string,
     ) {
         const rs = await this.businessLicensesService.createBusinessLicense(
             file,
-            businessCode,
+            businessId,
         );
         if (typeof rs === 'string') {
             throw new BadRequestException(rs);
@@ -33,15 +35,15 @@ export class BussinessLicensesController {
         return return_success('Businesses created successfully');
     }
 
-    @Post('/security-license/:businessCode/upload')
+    @Post('/security-license/:businessId/upload')
     @UseInterceptors(FileInterceptor('file'))
     async createSecurityLicense(
         @UploadedFile() file: Express.Multer.File,
-        @Param('businessCode') businessCode: string,
+        @Param('businessId') businessId: string,
     ) {
         const rs = await this.businessLicensesService.createSecurityLicense(
             file,
-            businessCode,
+            businessId,
         );
         if (typeof rs === 'string') {
             throw new BadRequestException(rs);
@@ -49,16 +51,16 @@ export class BussinessLicensesController {
         return return_success('Businesses created successfully');
     }
 
-    @Post('/fire-prevention-license/:businessCode/upload')
+    @Post('/fire-prevention-license/:businessId/upload')
     @UseInterceptors(FileInterceptor('file'))
     async createFirePreventionLicense(
         @UploadedFile() file: Express.Multer.File,
-        @Param('businessCode') businessCode: string,
+        @Param('businessId') businessId: string,
     ) {
         const rs =
             await this.businessLicensesService.createFirePreventionLicense(
                 file,
-                businessCode,
+                businessId,
             );
         if (typeof rs === 'string') {
             throw new BadRequestException(rs);
@@ -73,5 +75,20 @@ export class BussinessLicensesController {
             throw new BadRequestException(rs);
         }
         return return_success('Businesses deleted successfully');
+    }
+
+    @Get('')
+    async getAllBusinessLicense(
+        @Query() query: { page: number; limit: number },
+    ) {
+        const { page, limit } = query;
+        if (!page || !limit) {
+            throw new BadRequestException('Page and limit are required');
+        }
+        const rs = await this.businessLicensesService.getAllBusinessLicense(
+            page,
+            limit,
+        );
+        return return_success('Get all business licenses successfully', rs);
     }
 }

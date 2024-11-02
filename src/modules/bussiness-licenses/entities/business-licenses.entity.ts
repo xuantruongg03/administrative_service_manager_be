@@ -19,10 +19,10 @@ export class BusinessLicense {
     name: string;
 
     @Column({ length: 12 })
-    business_code: string;
+    business_id: string;
 
     @ManyToOne(() => Business)
-    @JoinColumn({ name: 'business_code' })
+    @JoinColumn({ name: 'business_id' })
     business: Business;
 
     @Column({ length: 12 })
@@ -34,6 +34,9 @@ export class BusinessLicense {
 
     @Column()
     file_path: string;
+
+    @Column()
+    size: number;
 
     @Column({ type: 'date', nullable: true })
     issued_date: Date;

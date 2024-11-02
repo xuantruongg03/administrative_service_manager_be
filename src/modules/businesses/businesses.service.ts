@@ -311,8 +311,8 @@ export class BusinessesService {
             const data = await Promise.all(
                 rs.map(async (business) => {
                     const employee_of_business =
-                        await this.employeesService.findAllByBusinessCode(
-                            business.code,
+                        await this.employeesService.findAllByBusinessId(
+                            business.id,
                         );
                     const number_of_employees = employee_of_business.length;
                     return { ...business, number_of_employees };
@@ -415,13 +415,13 @@ export class BusinessesService {
             business.legal_representative,
         );
         const owner = await this.personsService.findOne(business.owner_id);
-        const employees = await this.employeesService.findAllByBusinessCode(
-            business.code,
+        const employees = await this.employeesService.findAllByBusinessId(
+            business.id,
         );
         const number_of_employees = employees.length;
 
         const licenses = await this.businessLicensesService.findOne(
-            business.code,
+            business.id,
         );
 
         const businessInfo: BusinessInforDTO = {
@@ -500,6 +500,8 @@ export class BusinessesService {
 
             // Update business fields
             Object.assign(businessToUpdate, {
+                id: business.id,
+                code: business.code,
                 name_vietnamese: business.name_vietnamese,
                 name_english: business.name_english,
                 name_acronym: business.name_acronym,
@@ -512,6 +514,7 @@ export class BusinessesService {
                 status: business.status,
             });
 
+            await this.businessRepository.save(businessToUpdate);
             // Update coordinates if address changed
             if (business.address !== businessToUpdate.address) {
                 const coordinates = await this.geocodingService.getCoordinates(
@@ -586,8 +589,8 @@ export class BusinessesService {
         const data = await Promise.all(
             rs.map(async (business) => {
                 const employee_of_business =
-                    await this.employeesService.findAllByBusinessCode(
-                        business.code,
+                    await this.employeesService.findAllByBusinessId(
+                        business.id,
                     );
                 const number_of_employees = employee_of_business.length;
 

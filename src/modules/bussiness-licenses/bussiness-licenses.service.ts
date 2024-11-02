@@ -1,12 +1,15 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { BusinessLicense } from './entities/business-licenses.entity';
-import { BusinessLicenseDto } from './dto/business-license.dto';
+import CONSTANTS from 'src/common/constants';
 import { StorageService } from 'src/shared/storage/storage.service';
+import { Repository } from 'typeorm';
 import { BusinessesService } from '../businesses/businesses.service';
 import { LicenseTypeService } from '../license-type/license-type.service';
-import CONSTANTS from 'src/common/constants';
+import {
+    BusinessLicenseDetailDto,
+    BusinessLicenseDto,
+} from './dto/business-license.dto';
+import { BusinessLicense } from './entities/business-licenses.entity';
 
 @Injectable()
 export class BussinessLicensesService {
@@ -19,9 +22,60 @@ export class BussinessLicensesService {
         private readonly licenseTypeService: LicenseTypeService,
     ) {}
 
-    async findOne(business_code: string): Promise<BusinessLicenseDto[]> {
+    async getAllBusinessLicense(
+        page: number,
+        limit: number,
+    ): Promise<{
+        data: BusinessLicenseDetailDto[];
+        totalPages: number;
+        isLastPage: boolean;
+        totalRecords: number;
+    }> {
+        const validPage = Math.max(1, page);
+        const validLimit = Math.max(1, limit);
+        let skip = (validPage - 1) * validLimit;
+        if (skip < 0) {
+            skip = 0;
+        }
+        const licenses = await this.businessLicenseRepository.find({
+            skip: (validPage - 1) * validLimit,
+            take: validLimit,
+        });
+
+        const totalRecords = await this.businessLicenseRepository.count();
+        const totalPages = Math.ceil(totalRecords / validLimit);
+        const isLastPage = totalRecords <= validPage * validLimit;
+        return {
+            data: await Promise.all(
+                licenses.map(async (license) => {
+                    const business = await this.businessesService.findOne(
+                        license.business_id,
+                    );
+                    const licenseType = await this.licenseTypeService.findById(
+                        license.license_type_id,
+                    );
+                    return {
+                        id: license.id,
+                        status: license.status,
+                        type: licenseType.name,
+                        name: license.name,
+                        file: license.file_path,
+                        size: license.size,
+                        company: business.name_vietnamese,
+                        address: business.address,
+                        update_at: license.updated_at.toString(),
+                    };
+                }),
+            ),
+            totalPages,
+            isLastPage,
+            totalRecords,
+        };
+    }
+
+    async findOne(businessId: string): Promise<BusinessLicenseDto[]> {
         const license = await this.businessLicenseRepository.findBy({
-            business_code,
+            business_id: businessId,
         });
         const licenses = await Promise.all(
             license.map(async (license) => {
@@ -86,13 +140,14 @@ export class BussinessLicensesService {
 
     async createLicense(
         file: Express.Multer.File,
-        businessCode: string,
+        businessId: string,
         licenseType: string,
     ) {
-        const business = await this.businessesService.findOne(businessCode);
+        const business = await this.businessesService.findOne(businessId);
         if (!business) {
             return 'Business not found';
         }
+
         try {
             let nameType = '';
             if (licenseType === CONSTANTS.LICENSE_TYPE.BUSINESS)
@@ -101,25 +156,42 @@ export class BussinessLicensesService {
                 nameType = 'Giấy phép an ninh trật tự';
             if (licenseType === CONSTANTS.LICENSE_TYPE.FIRE)
                 nameType = 'Giấy phép phòng cháy chữa cháy';
-            const name = business.name_vietnamese;
-            const name_file = `${businessCode}-${nameType}-${name}`;
-            const file_path = await this.storageService.uploadFile(
-                file,
-                name_file,
-            );
+
             const license_type =
                 await this.licenseTypeService.findByName(licenseType);
             if (!license_type) {
                 return 'License type not found';
             }
+
+            // Check if license already exists for this business and type
+            const existingLicense =
+                await this.businessLicenseRepository.findOne({
+                    where: {
+                        business_id: businessId,
+                        license_type_id: license_type.id,
+                    },
+                });
+
+            if (existingLicense) {
+                return 'License already exists for this business';
+            }
+
+            const name = business.name_vietnamese;
+            const name_file = `${business.code}-${nameType}-${name}`;
+            const { file_path, size } = await this.storageService.uploadFile(
+                file,
+                name_file,
+            );
+
             const id = await this.generateId();
             const license = await this.businessLicenseRepository.create({
-                business_code: businessCode,
+                business_id: businessId,
                 file_path,
                 id,
                 license_type_id: license_type.id,
                 status: 'normal',
                 name: name_file,
+                size,
             });
             await this.businessLicenseRepository.save(license);
             return true;

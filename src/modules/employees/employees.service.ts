@@ -21,9 +21,9 @@ export class EmployeesService {
         private readonly businessesService: BusinessesService,
     ) {}
 
-    async findAllByBusinessCode(businessCode: string): Promise<EmployeeDTO[]> {
+    async findAllByBusinessId(businessId: string): Promise<EmployeeDTO[]> {
         const employees = await this.employeeRepository.find({
-            where: { business_code: businessCode },
+            where: { business_id: businessId },
         });
         return employees.map((employee) => ({
             id: employee.id,
@@ -38,7 +38,7 @@ export class EmployeesService {
     }
 
     async findAllByBusinessCodeWithPagination(
-        businessCode: string,
+        businessId: string,
         page: number,
         limit: number,
     ): Promise<{
@@ -51,7 +51,7 @@ export class EmployeesService {
         const validLimit = Math.max(1, limit);
         const [employees, totalRecords] =
             await this.employeeRepository.findAndCount({
-                where: { business_code: businessCode },
+                where: { business_id: businessId },
                 skip: (validPage - 1) * validLimit,
                 take: validLimit,
             });
@@ -85,12 +85,12 @@ export class EmployeesService {
 
     async isEmployeeExist(
         citizenId: string,
-        businessCode: string,
+        businessId: string,
     ): Promise<boolean> {
         const employee = await this.employeeRepository.findOne({
             where: {
                 citizen_id: citizenId,
-                business_code: businessCode,
+                business_id: businessId,
             },
         });
         return !!employee;
@@ -107,7 +107,7 @@ export class EmployeesService {
             return 'Ngày vào làm là bắt buộc';
         }
         if (!data['Chức vụ']) {
-            return 'Chức vụ là bắt buộc';
+            return 'Chức vụ là b���t buộc';
         }
         if (!data['Số điện thoại']) {
             return 'Số điện thoại là bắt buộc';
@@ -122,7 +122,8 @@ export class EmployeesService {
         }
         return null;
     }
-    async createPersonByExcel(file: Express.Multer.File, businessCode: string) {
+
+    async createPersonByExcel(file: Express.Multer.File, businessId: string) {
         const workbook = XLSX.read(file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
@@ -137,7 +138,7 @@ export class EmployeesService {
             employee.id = await this.generateId();
             employee.citizen_id = row['Số CCCD'];
             employee.name = row['Họ tên'];
-            employee.business_code = businessCode;
+            employee.business_id = businessId;
             employee.position = row['Chức vụ'];
             employee.phone = row['Số điện thoại'];
             employee.start_date = parseDate(row['Ngày vào làm'] || '');
@@ -145,7 +146,7 @@ export class EmployeesService {
             employee.updated_at = new Date();
             const isExistEmployee = await this.isEmployeeExist(
                 employee.citizen_id,
-                employee.business_code,
+                employee.business_id,
             );
             if (!isExistEmployee) {
                 await this.employeeRepository.save(employee);
@@ -153,44 +154,49 @@ export class EmployeesService {
         }
     }
 
-    async getEmployeeInfo(businessCode: string) {
-        const employees = await this.findAllByBusinessCode(businessCode);
+    async getEmployeeInfo(businessId: string) {
+        const employees = await this.findAllByBusinessId(businessId);
         return employees;
     }
 
     async getEmployeeInfoWithPagination(
-        businessCode: string,
+        businessId: string,
         page: number,
         limit: number,
     ) {
         const validPage = Math.max(1, page);
         const validLimit = Math.max(1, limit);
         const employees = await this.findAllByBusinessCodeWithPagination(
-            businessCode,
+            businessId,
             validPage,
             validLimit,
         );
         return employees;
     }
 
-    async createEmployee(businessCode: string, body: any) {
-        const employee = new Employee();
-        employee.id = await this.generateId();
-        employee.citizen_id = body.citizen_id;
-        employee.business_code = businessCode;
-        employee.name = body.name;
-        employee.position = body.position;
-        employee.phone = body.phone;
-        employee.start_date = parseDate(body.start_date);
-        const isExist = await this.isEmployeeExist(
-            employee.citizen_id,
-            employee.business_code,
-        );
-        if (isExist) {
-            return 'Employee already exists';
+    async createEmployee(businessId: string, body: any) {
+        try {
+            const employee = new Employee();
+            employee.id = await this.generateId();
+            employee.citizen_id = body.citizen_id;
+            employee.business_id = businessId;
+            employee.name = body.name;
+            employee.position = body.position;
+            employee.phone = body.phone;
+            employee.start_date = parseDate(body.start_date);
+            const isExist = await this.isEmployeeExist(
+                employee.citizen_id,
+                employee.business_id,
+            );
+            if (isExist) {
+                return 'Employee already exists';
+            }
+            await this.employeeRepository.save(employee);
+            return true;
+        } catch (error) {
+            console.log(error);
+            return 'Create employee info failed';
         }
-        await this.employeeRepository.save(employee);
-        return true;
     }
 
     async deleteEmployee(citizen_id: string) {
@@ -204,13 +210,13 @@ export class EmployeesService {
     }
 
     async updateEmployee(
-        businessCode: string,
+        businessId: string,
         citizen_id: string,
         body: CreateEmployeeDTO,
     ) {
         const data = {
             citizen_id: body.citizen_id,
-            business_code: businessCode,
+            business_id: businessId,
             name: body.name,
             position: body.position,
             phone: body.phone,
@@ -218,7 +224,7 @@ export class EmployeesService {
         };
         try {
             await this.employeeRepository.update(
-                { citizen_id, business_code: businessCode },
+                { citizen_id, business_id: businessId },
                 data,
             );
             return true;
