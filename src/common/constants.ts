@@ -7,6 +7,7 @@ const CONSTANTS = {
         SECURITY: 'Giấy phép ANTT',
         FIRE: 'Giấy phép PCCC',
     },
+    TYPE_SLUG: '-',
 };
 
 export default CONSTANTS;

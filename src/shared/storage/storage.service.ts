@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import slugify from 'slugify';
+import CONSTANTS from 'src/common/constants';
 
 @Injectable()
 export class StorageService {
@@ -11,12 +13,13 @@ export class StorageService {
         name?: string,
     ): Promise<{ file_path: string; size: number }> {
         const fileExt = path.extname(file.originalname);
-        const fileName = name
-            ? `${name}${fileExt}`
-            : `${Date.now()}-${file.originalname}`;
+        const fileName = slugify(name) + fileExt;
         const filePath = path.join(this.uploadDir, fileName);
         await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, file.buffer);
-        return { file_path: `${fileName}`, size: file.size };
+        return {
+            file_path: `${slugify(fileName, CONSTANTS.TYPE_SLUG)}`,
+            size: file.size,
+        };
     }
 }

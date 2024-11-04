@@ -1,5 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import CONSTANTS from 'src/common/constants';
 import { parseDate } from 'src/common/format';
 import { GeocodingService } from 'src/shared/geocoding.service';
 import { ILike, Not, Repository } from 'typeorm';
@@ -13,7 +14,6 @@ import { TypeOfOrganization } from '../type-of-organizations/entities/type-of-or
 import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
 import { BusinessInforDTO, BusinessMapDTO, MapData } from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
-import CONSTANTS from 'src/common/constants';
 
 @Injectable()
 export class BusinessesService {
@@ -411,10 +411,12 @@ export class BusinessesService {
             return null;
         }
 
-        const representative = await this.personsService.findOne(
+        const representative = await this.personsService.findByCitizenId(
             business.legal_representative,
         );
-        const owner = await this.personsService.findOne(business.owner_id);
+        const owner = await this.personsService.findByCitizenId(
+            business.owner_id,
+        );
         const employees = await this.employeesService.findAllByBusinessId(
             business.id,
         );

@@ -2,7 +2,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import CONSTANTS from 'src/common/constants';
 import { StorageService } from 'src/shared/storage/storage.service';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { BusinessesService } from '../businesses/businesses.service';
 import { LicenseTypeService } from '../license-type/license-type.service';
 import {
@@ -25,6 +25,7 @@ export class BussinessLicensesService {
     async getAllBusinessLicense(
         page: number,
         limit: number,
+        keyword?: string,
     ): Promise<{
         data: BusinessLicenseDetailDto[];
         totalPages: number;
@@ -37,40 +38,66 @@ export class BussinessLicensesService {
         if (skip < 0) {
             skip = 0;
         }
-        const licenses = await this.businessLicenseRepository.find({
-            skip: (validPage - 1) * validLimit,
-            take: validLimit,
-        });
 
-        const totalRecords = await this.businessLicenseRepository.count();
-        const totalPages = Math.ceil(totalRecords / validLimit);
-        const isLastPage = totalRecords <= validPage * validLimit;
-        return {
-            data: await Promise.all(
-                licenses.map(async (license) => {
-                    const business = await this.businessesService.findOne(
-                        license.business_id,
-                    );
-                    const licenseType = await this.licenseTypeService.findById(
-                        license.license_type_id,
-                    );
-                    return {
-                        id: license.id,
-                        status: license.status,
-                        type: licenseType.name,
-                        name: license.name,
-                        file: license.file_path,
-                        size: license.size,
-                        company: business.name_vietnamese,
-                        address: business.address,
-                        update_at: license.updated_at.toString(),
-                    };
-                }),
-            ),
-            totalPages,
-            isLastPage,
-            totalRecords,
-        };
+        let licenses;
+        let totalRecords;
+
+        try {
+            [licenses, totalRecords] =
+                await this.businessLicenseRepository.findAndCount({
+                    skip: (validPage - 1) * validLimit,
+                    take: validLimit,
+                    order: {
+                        updated_at: 'DESC',
+                    },
+                });
+
+            if (keyword && keyword.trim() !== '') {
+                [licenses, totalRecords] =
+                    await this.businessLicenseRepository.findAndCount({
+                        where: [{ name: ILike(`%${keyword}%`) }],
+                        skip: (validPage - 1) * validLimit,
+                        take: validLimit,
+                        order: {
+                            updated_at: 'DESC',
+                        },
+                    });
+            }
+
+            const totalPages = Math.ceil(totalRecords / validLimit);
+            const isLastPage = totalRecords <= validPage * validLimit;
+
+            return {
+                data: await Promise.all(
+                    licenses.map(async (license) => {
+                        const business = await this.businessesService.findOne(
+                            license.business_id,
+                        );
+                        const licenseType =
+                            await this.licenseTypeService.findById(
+                                license.license_type_id,
+                            );
+                        return {
+                            id: license.id,
+                            status: license.status,
+                            type: licenseType.name,
+                            name: license.name,
+                            file: license.file_path,
+                            size: license.size,
+                            company: business.name_vietnamese,
+                            address: business.address,
+                            update_at: license.updated_at.toString(),
+                        };
+                    }),
+                ),
+                totalPages,
+                isLastPage,
+                totalRecords,
+            };
+        } catch (error) {
+            console.error('Error in getAllBusinessLicense:', error);
+            throw error;
+        }
     }
 
     async findOne(businessId: string): Promise<BusinessLicenseDto[]> {
@@ -104,7 +131,11 @@ export class BussinessLicensesService {
             if (!license) {
                 return 'Business license not found';
             }
-            Object.assign(license, file);
+            const { file_path, size } = await this.storageService.uploadFile(
+                file,
+                license.name,
+            );
+            Object.assign(license, { file_path, size });
             return await this.businessLicenseRepository.save(license);
         } catch (error) {
             console.log(error);

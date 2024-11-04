@@ -47,6 +47,15 @@ export class EmployeesController {
         return return_success('Create employees successfully');
     }
 
+    @Get('employee-info/no-pagination/:businessId')
+    async getEmployeeInfoNoPagination(@Param('businessId') businessId: string) {
+        const rs = await this.employeesService.findAllByBusinessId(businessId);
+        if (typeof rs === 'string') {
+            throw new BadRequestException(rs);
+        }
+        return return_success('Get employee info successfully', rs);
+    }
+
     @Get('/employee-info/:businessId')
     async getEmployeeInfo(
         @Param('businessId') businessId: string,

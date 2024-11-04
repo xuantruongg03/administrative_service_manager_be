@@ -4,6 +4,7 @@ import {
     Delete,
     Get,
     Param,
+    Patch,
     Post,
     Query,
     UploadedFile,
@@ -18,6 +19,35 @@ export class BussinessLicensesController {
     constructor(
         private readonly businessLicensesService: BussinessLicensesService,
     ) {}
+
+    @Get('')
+    async getAllBusinessLicense(
+        @Query() query: { page: number; limit: number; keyword?: string },
+    ) {
+        const { page, limit, keyword } = query;
+        if (!page || !limit) {
+            throw new BadRequestException('Page and limit are required');
+        }
+        const rs = await this.businessLicensesService.getAllBusinessLicense(
+            page,
+            limit,
+            keyword,
+        );
+        return return_success('Get all business licenses successfully', rs);
+    }
+
+    @Patch('/:id')
+    @UseInterceptors(FileInterceptor('file'))
+    async updateBusinessLicense(
+        @UploadedFile() file: Express.Multer.File,
+        @Param('id') id: string,
+    ) {
+        const rs = await this.businessLicensesService.update(id, file);
+        if (typeof rs === 'string') {
+            throw new BadRequestException(rs);
+        }
+        return return_success('Update business license successfully');
+    }
 
     @Post('/business-license/:businessId/upload')
     @UseInterceptors(FileInterceptor('file'))
@@ -75,20 +105,5 @@ export class BussinessLicensesController {
             throw new BadRequestException(rs);
         }
         return return_success('Businesses deleted successfully');
-    }
-
-    @Get('')
-    async getAllBusinessLicense(
-        @Query() query: { page: number; limit: number },
-    ) {
-        const { page, limit } = query;
-        if (!page || !limit) {
-            throw new BadRequestException('Page and limit are required');
-        }
-        const rs = await this.businessLicensesService.getAllBusinessLicense(
-            page,
-            limit,
-        );
-        return return_success('Get all business licenses successfully', rs);
     }
 }

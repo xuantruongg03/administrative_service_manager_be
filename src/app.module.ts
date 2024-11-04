@@ -18,6 +18,7 @@ import { PersonsModule } from './modules/persons/persons.module';
 import { TypeOfOrganization } from './modules/type-of-organizations/entities/type-of-organization.entity';
 import { TypeOfOrganizationsModule } from './modules/type-of-organizations/type-of-organizations.module';
 import { GeocodingService } from './shared/geocoding.service';
+import { StorageModule } from './shared/storage/storage.module';
 
 @Module({
     imports: [
@@ -57,6 +58,7 @@ import { GeocodingService } from './shared/geocoding.service';
         PersonsModule,
         TypeOfOrganizationsModule,
         LicenseTypeModule,
+        StorageModule,
     ],
     controllers: [AppController, BusinessesController],
     providers: [AppService, GeocodingService, BusinessesService],
