@@ -1,5 +1,6 @@
 import {
     BadRequestException,
+    Body,
     Controller,
     Delete,
     Get,
@@ -96,6 +97,22 @@ export class BussinessLicensesController {
             throw new BadRequestException(rs);
         }
         return return_success('Businesses created successfully');
+    }
+
+    @Delete('/multiple')
+    async deleteBusinessLicenses(@Body() body: { licenseIds: string[] }) {
+        if (!body.licenseIds || body.licenseIds.length === 0) {
+            throw new BadRequestException(
+                'At least one business license ID is required for deletion',
+            );
+        }
+        const rs = await this.businessLicensesService.deleteMultiple(
+            body.licenseIds,
+        );
+        if (typeof rs === 'string') {
+            throw new BadRequestException(rs);
+        }
+        return return_success('Businesses deleted successfully');
     }
 
     @Delete('/:id')

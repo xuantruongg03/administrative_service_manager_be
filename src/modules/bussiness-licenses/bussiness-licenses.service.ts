@@ -156,6 +156,19 @@ export class BussinessLicensesService {
         }
     }
 
+    async deleteMultiple(ids: string[]): Promise<boolean | string> {
+        try {
+            const result = await this.businessLicenseRepository.softDelete(ids);
+            if (result.affected === 0) {
+                return 'Business license not found';
+            }
+            return true;
+        } catch (error) {
+            console.log(error);
+            return 'Failed to delete business license';
+        }
+    }
+
     async generateId() {
         const id = Math.random()
             .toString(36)

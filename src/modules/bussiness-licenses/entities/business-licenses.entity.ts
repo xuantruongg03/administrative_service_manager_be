@@ -3,6 +3,7 @@ import { LicenseType } from 'src/modules/license-type/entities/license-type.enti
 import {
     Column,
     CreateDateColumn,
+    DeleteDateColumn,
     Entity,
     JoinColumn,
     ManyToOne,
@@ -52,4 +53,7 @@ export class BusinessLicense {
 
     @UpdateDateColumn()
     updated_at: Date;
+
+    @DeleteDateColumn()
+    deleted_at: Date;
 }
