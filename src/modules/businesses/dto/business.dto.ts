@@ -60,6 +60,7 @@ export class BusinessInforDTO {
 }
 
 export class BusinessMapDTO {
+    id: string;
     code: string;
     name_vietnamese: string;
     address: string;
@@ -73,6 +74,7 @@ export class BusinessMapDTO {
 }
 
 export class MapData {
+    id: string;
     name: string;
     address: string;
     status: string;

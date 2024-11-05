@@ -2,8 +2,10 @@
 /dist
 /node_modules
 /build
+/static
 ./backup_db.sql
 .env.development
+/uploads
 
 # Logs
 logs

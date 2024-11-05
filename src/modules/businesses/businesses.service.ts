@@ -596,10 +596,9 @@ export class BusinessesService {
                     );
                 const number_of_employees = employee_of_business.length;
 
-                const license_status = await this.getLicenseStatus(
-                    business.code,
-                );
+                const license_status = await this.getLicenseStatus(business.id);
                 return {
+                    id: business.id,
                     code: business.code,
                     name_vietnamese: business.name_vietnamese,
                     address: business.address,
@@ -622,26 +621,30 @@ export class BusinessesService {
         };
     }
 
-    private async getLicenseStatus(business_code: string): Promise<string[]> {
+    private async getLicenseStatus(business_id: string): Promise<string[]> {
         const licenses =
-            await this.businessLicensesService.findOne(business_code);
-        //Nếu không có giấy phép thì trả về mảng rỗng
-        if (!!licenses) {
-            return [
-                'Không có giấy phép kinh doanh',
-                'Không có giấy phép an ninh trật tự',
-            ];
-        }
-        //Nếu có giấy phép thì kiểm tra loại giấy phép, yêu cầu phải có giấy phép kinh doanh và an ninh trật tự
-        //Lấy ra các giấy phép bắt buộc và kiểm tra xem có bị thiếu không
+            await this.businessLicensesService.findOne(business_id);
         const mandatoryLicenses = await this.licenseTypeService.findMandatory();
-        const missingLicenses = [];
-        for (const l of mandatoryLicenses) {
-            const license = licenses.find((license) => license.name === l.name);
-            if (!license) {
-                missingLicenses.push(l.name);
+        const missingLicenses: string[] = [];
+
+        // If no licenses exist at all
+        if (!licenses || licenses.length === 0) {
+            return mandatoryLicenses.map(
+                (license) => `Không có ${license.name}`,
+            );
+        }
+
+        // Check for missing mandatory licenses
+        for (const mandatoryLicense of mandatoryLicenses) {
+            const hasLicense = licenses.some(
+                (license) => license.type === mandatoryLicense.name,
+            );
+            if (!hasLicense) {
+                missingLicenses.push(`Không có ${mandatoryLicense.name}`);
             }
         }
+
+        return missingLicenses;
     }
 
     async findAllMapMarker(): Promise<MapData[]> {
@@ -650,7 +653,7 @@ export class BusinessesService {
         });
 
         const mapData: Promise<MapData>[] = businesses.map(async (business) => {
-            const license_status = await this.getLicenseStatus(business.code);
+            const license_status = await this.getLicenseStatus(business.id);
             const object: MapData = {
                 name: business.name_vietnamese,
                 address: business.address,
@@ -660,6 +663,7 @@ export class BusinessesService {
                 lng: business.longitude,
                 lat: business.latitude,
                 code: business.code,
+                id: business.id,
             };
             return object;
         });
