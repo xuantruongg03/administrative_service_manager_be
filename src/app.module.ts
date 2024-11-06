@@ -19,6 +19,9 @@ import { TypeOfOrganization } from './modules/type-of-organizations/entities/typ
 import { TypeOfOrganizationsModule } from './modules/type-of-organizations/type-of-organizations.module';
 import { GeocodingService } from './shared/geocoding.service';
 import { StorageModule } from './shared/storage/storage.module';
+import { StatisticsModule } from './modules/statistics/statistics.module';
+import { StatisticsController } from './modules/statistics/statistics.controller';
+import { StatisticsService } from './modules/statistics/statistics.service';
 
 @Module({
     imports: [
@@ -59,8 +62,14 @@ import { StorageModule } from './shared/storage/storage.module';
         TypeOfOrganizationsModule,
         LicenseTypeModule,
         StorageModule,
+        StatisticsModule,
     ],
-    controllers: [AppController, BusinessesController],
-    providers: [AppService, GeocodingService, BusinessesService],
+    controllers: [AppController, BusinessesController, StatisticsController],
+    providers: [
+        AppService,
+        GeocodingService,
+        BusinessesService,
+        StatisticsService,
+    ],
 })
 export class AppModule {}

@@ -1,5 +1,6 @@
 const CONSTANTS = {
     ACCEPTED_FILE_TYPES: ['csv', 'xls', 'xlsx'],
+    ACCEPT_FILE_BUSINESS_LICENSE: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
     LIMIT_BUSINESS_PER_PAGE: 10,
     LENGTH_ID: 12,
     LICENSE_TYPE: {
@@ -8,6 +9,27 @@ const CONSTANTS = {
         FIRE: 'Giấy phép PCCC',
     },
     TYPE_SLUG: '-',
+    COLOR_ARRAY: [
+        '#FF6384',
+        '#36A2EB',
+        '#FFCE56',
+        '#4BC0C0',
+        '#9966FF',
+        '#FF9F40',
+        '#26B99A',
+        '#D980FA',
+        '#FDB45C',
+        '#4D5360',
+        '#DC2626',
+        '#059669',
+        '#7C3AED',
+        '#0F766E',
+        '#7C2D19',
+        '#FBBF24',
+        '#0F766E',
+        '#7C3AED',
+        '#FBBF24',
+    ],
 };
 
 export default CONSTANTS;
