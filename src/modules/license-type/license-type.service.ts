@@ -2,7 +2,6 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LicenseType } from './entities/license-type.entity';
-import CONSTANTS from 'src/common/constants';
 
 @Injectable()
 export class LicenseTypeService implements OnModuleInit {
@@ -22,18 +21,38 @@ export class LicenseTypeService implements OnModuleInit {
         const licenseTypes = [
             {
                 id: '102318673847',
-                name: CONSTANTS.LICENSE_TYPE.BUSINESS,
+                name: 'Giấy phép kinh doanh',
                 is_mandatory: true,
             },
             {
                 id: '102318673848',
-                name: CONSTANTS.LICENSE_TYPE.SECURITY,
+                name: 'Giấy phép ANTT',
                 is_mandatory: true,
             },
             {
                 id: '102318673849',
-                name: CONSTANTS.LICENSE_TYPE.FIRE,
+                name: 'Giấy phép PCCC',
                 is_mandatory: true,
+            },
+            {
+                id: '102318673850',
+                name: 'Giấy phép vệ sinh thực phẩm',
+                is_mandatory: false,
+            },
+            {
+                id: '102318673851',
+                name: 'Giấy phép cung cấp dịch vụ số',
+                is_mandatory: false,
+            },
+            {
+                id: '102318673852',
+                name: 'Giấy phép kinh doanh vận tải',
+                is_mandatory: false,
+            },
+            {
+                id: '102318673853',
+                name: 'Giấy phép kinh doanh du lịch lữ hành',
+                is_mandatory: false,
             },
         ];
         await this.licenseTypeRepository.save(licenseTypes);
@@ -46,6 +65,10 @@ export class LicenseTypeService implements OnModuleInit {
                 is_mandatory: true,
             },
         });
+    }
+
+    async findAll() {
+        return await this.licenseTypeRepository.find();
     }
 
     async findOne(business_code: string) {

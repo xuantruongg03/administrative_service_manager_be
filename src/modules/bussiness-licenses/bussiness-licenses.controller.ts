@@ -50,15 +50,17 @@ export class BussinessLicensesController {
         return return_success('Update business license successfully');
     }
 
-    @Post('/business-license/:businessId/upload')
+    @Post('/:typeLicenseId/:businessId/upload')
     @UseInterceptors(FileInterceptor('file'))
     async createBusinessLicense(
         @UploadedFile() file: Express.Multer.File,
-        @Param('businessId') businessId: string,
+        @Param() params: { businessId: string; typeLicenseId: string },
     ) {
-        const rs = await this.businessLicensesService.createBusinessLicense(
+        const { businessId, typeLicenseId } = params;
+        const rs = await this.businessLicensesService.createLicense(
             file,
             businessId,
+            typeLicenseId,
         );
         if (typeof rs === 'string') {
             throw new BadRequestException(rs);
@@ -66,38 +68,54 @@ export class BussinessLicensesController {
         return return_success('Businesses created successfully');
     }
 
-    @Post('/security-license/:businessId/upload')
-    @UseInterceptors(FileInterceptor('file'))
-    async createSecurityLicense(
-        @UploadedFile() file: Express.Multer.File,
-        @Param('businessId') businessId: string,
-    ) {
-        const rs = await this.businessLicensesService.createSecurityLicense(
-            file,
-            businessId,
-        );
-        if (typeof rs === 'string') {
-            throw new BadRequestException(rs);
-        }
-        return return_success('Businesses created successfully');
-    }
+    // @Post('/business-license/:businessId/upload')
+    // @UseInterceptors(FileInterceptor('file'))
+    // async createBusinessLicense(
+    //     @UploadedFile() file: Express.Multer.File,
+    //     @Param('businessId') businessId: string,
+    // ) {
+    //     const rs = await this.businessLicensesService.createBusinessLicense(
+    //         file,
+    //         businessId,
+    //     );
+    //     if (typeof rs === 'string') {
+    //         throw new BadRequestException(rs);
+    //     }
+    //     return return_success('Businesses created successfully');
+    // }
 
-    @Post('/fire-prevention-license/:businessId/upload')
-    @UseInterceptors(FileInterceptor('file'))
-    async createFirePreventionLicense(
-        @UploadedFile() file: Express.Multer.File,
-        @Param('businessId') businessId: string,
-    ) {
-        const rs =
-            await this.businessLicensesService.createFirePreventionLicense(
-                file,
-                businessId,
-            );
-        if (typeof rs === 'string') {
-            throw new BadRequestException(rs);
-        }
-        return return_success('Businesses created successfully');
-    }
+    // @Post('/security-license/:businessId/upload')
+    // @UseInterceptors(FileInterceptor('file'))
+    // async createSecurityLicense(
+    //     @UploadedFile() file: Express.Multer.File,
+    //     @Param('businessId') businessId: string,
+    // ) {
+    //     const rs = await this.businessLicensesService.createSecurityLicense(
+    //         file,
+    //         businessId,
+    //     );
+    //     if (typeof rs === 'string') {
+    //         throw new BadRequestException(rs);
+    //     }
+    //     return return_success('Businesses created successfully');
+    // }
+
+    // @Post('/fire-prevention-license/:businessId/upload')
+    // @UseInterceptors(FileInterceptor('file'))
+    // async createFirePreventionLicense(
+    //     @UploadedFile() file: Express.Multer.File,
+    //     @Param('businessId') businessId: string,
+    // ) {
+    //     const rs =
+    //         await this.businessLicensesService.createFirePreventionLicense(
+    //             file,
+    //             businessId,
+    //         );
+    //     if (typeof rs === 'string') {
+    //         throw new BadRequestException(rs);
+    //     }
+    //     return return_success('Businesses created successfully');
+    // }
 
     @Delete('/multiple')
     async deleteBusinessLicenses(@Body() body: { licenseIds: string[] }) {

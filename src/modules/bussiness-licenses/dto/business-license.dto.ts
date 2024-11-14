@@ -1,8 +1,10 @@
 export class BusinessLicenseDto {
-    id: string;
-    name: string;
-    status: string;
     type: string;
+    licenses: {
+        id: string;
+        name: string;
+        status: string;
+    }[];
 }
 
 export class BusinessLicenseDetailDto {

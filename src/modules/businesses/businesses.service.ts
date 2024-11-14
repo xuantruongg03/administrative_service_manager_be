@@ -12,7 +12,12 @@ import { Person } from '../persons/entities/persons.entity';
 import { PersonsService } from '../persons/persons.service';
 import { TypeOfOrganization } from '../type-of-organizations/entities/type-of-organization.entity';
 import { TypeOfOrganizationsService } from '../type-of-organizations/type-of-organizations.service';
-import { BusinessInforDTO, BusinessMapDTO, MapData } from './dto/business.dto';
+import {
+    BusinessDTO,
+    BusinessInforDTO,
+    BusinessMapDTO,
+    MapData,
+} from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
 
 @Injectable()
@@ -226,51 +231,81 @@ export class BusinessesService {
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(sheet);
+
         for (const row of data) {
-            //create business and check invalid data
+            // Create business and check invalid data
             const business = await this.createBusiness(row);
             if (typeof business === 'string') {
                 return business;
             }
-            //create representative and check invalid data
+
+            // Create representative and check invalid data
             const person_representative = await this.createRepresentative(row);
             if (typeof person_representative === 'string') {
                 return person_representative;
             }
-            //create owner and check invalid data
+
+            // Create owner and check invalid data
             const person_owner = await this.createOwner(row);
             if (typeof person_owner === 'string') {
                 return person_owner;
             }
-            //check exist representative and owner
-            const isExistRepresentative =
-                await this.personsService.isPersonExist(
+
+            // Check and create representative
+            const existingRepresentative =
+                await this.personsService.findByCitizenId(
                     person_representative.citizen_id,
                 );
 
-            if (!isExistRepresentative) {
-                await this.personsService.create(person_representative);
+            let legal_representative_id;
+            if (!existingRepresentative) {
+                const savedRepresentative = await this.personsService.create(
+                    person_representative,
+                );
+                legal_representative_id = savedRepresentative.id;
+            } else {
+                legal_representative_id = existingRepresentative.id;
             }
-            const isExistOwner = await this.personsService.isPersonExist(
+
+            // Check and create owner
+            const existingOwner = await this.personsService.findByCitizenId(
                 person_owner.citizen_id,
             );
-            // Create owner if not exists
-            if (!isExistOwner) {
-                await this.personsService.create(person_owner);
+
+            let owner_id;
+            if (!existingOwner) {
+                const savedOwner =
+                    await this.personsService.create(person_owner);
+                owner_id = savedOwner.id;
+            } else {
+                owner_id = existingOwner.id;
             }
-            //check exist business
+
+            // Check if business exists
             const isExistBusiness = await this.isBusinessExist(
                 business.id,
                 business.code,
                 business.name_vietnamese,
             );
+
             if (!isExistBusiness) {
+                business.legal_representative = legal_representative_id;
+                business.owner_id = owner_id;
                 await this.businessRepository.save(business);
             }
         }
     }
 
-    async findAll(page: number, limit: number, keyword: string) {
+    async findAll(
+        page: number,
+        limit: number,
+        keyword: string,
+    ): Promise<{
+        data: BusinessDTO[];
+        totalPages: number;
+        isLastPage: boolean;
+        totalRecords: number;
+    }> {
         const validPage = Math.max(1, page);
         const validLimit = Math.max(1, limit);
 
@@ -310,12 +345,19 @@ export class BusinessesService {
 
             const data = await Promise.all(
                 rs.map(async (business) => {
-                    const employee_of_business =
-                        await this.employeesService.findAllByBusinessId(
-                            business.id,
-                        );
-                    const number_of_employees = employee_of_business.length;
-                    return { ...business, number_of_employees };
+                    const licenses = await this.businessLicensesService.findOne(
+                        business.id,
+                    );
+                    return {
+                        id: business.id,
+                        code: business.code,
+                        name_vietnamese: business.name_vietnamese,
+                        status: business.status,
+                        created_at: business.created_at,
+                        phone: business.phone,
+                        address: business.address,
+                        licenses: licenses.map((license) => license.type),
+                    };
                 }),
             );
 
@@ -411,12 +453,10 @@ export class BusinessesService {
             return null;
         }
 
-        const representative = await this.personsService.findByCitizenId(
+        const representative = await this.personsService.findOne(
             business.legal_representative,
         );
-        const owner = await this.personsService.findByCitizenId(
-            business.owner_id,
-        );
+        const owner = await this.personsService.findOne(business.owner_id);
         const employees = await this.employeesService.findAllByBusinessId(
             business.id,
         );
@@ -514,6 +554,7 @@ export class BusinessesService {
                 website: business.website,
                 type_of_organization: business.type_of_organization,
                 status: business.status,
+                created_at: new Date(business.created_at),
             });
 
             await this.businessRepository.save(businessToUpdate);
@@ -537,9 +578,8 @@ export class BusinessesService {
                 hometown: business.legal_representative.hometown,
                 current_address: business.legal_representative.current_address,
             });
-
             // Update owner through PersonsService
-            await this.personsService.update(business.owner.citizen_id, {
+            await this.personsService.update(owner.id, {
                 citizen_id: business.owner.citizen_id,
                 name: business.owner.name,
                 birth_date: new Date(business.owner.birth_date),

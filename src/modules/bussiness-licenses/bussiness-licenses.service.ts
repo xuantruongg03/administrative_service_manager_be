@@ -5,11 +5,9 @@ import { StorageService } from 'src/shared/storage/storage.service';
 import { ILike, Repository } from 'typeorm';
 import { BusinessesService } from '../businesses/businesses.service';
 import { LicenseTypeService } from '../license-type/license-type.service';
-import {
-    BusinessLicenseDetailDto,
-    BusinessLicenseDto,
-} from './dto/business-license.dto';
+import { BusinessLicenseDetailDto } from './dto/business-license.dto';
 import { BusinessLicense } from './entities/business-licenses.entity';
+import { BusinessLicenseDto } from './dto/business-license.dto';
 
 @Injectable()
 export class BussinessLicensesService {
@@ -100,24 +98,47 @@ export class BussinessLicensesService {
         }
     }
 
-    async findOne(businessId: string): Promise<BusinessLicenseDto[]> {
-        const license = await this.businessLicenseRepository.findBy({
+    async findOne(businessId: string) {
+        const licenses = await this.businessLicenseRepository.findBy({
             business_id: businessId,
         });
-        const licenses = await Promise.all(
-            license.map(async (license) => {
-                const nameLicense = await this.licenseTypeService.findById(
+
+        // Group licenses by type
+        const licensesByType = new Map<
+            string,
+            Array<{ id: string; name: string; status: string }>
+        >();
+
+        await Promise.all(
+            licenses.map(async (license) => {
+                const licenseType = await this.licenseTypeService.findById(
                     license.license_type_id,
                 );
-                return {
+
+                const simplifiedLicense = {
                     id: license.id,
                     name: license.name,
                     status: license.status,
-                    type: nameLicense.name,
+                    file: license.file_path,
                 };
+
+                if (!licensesByType.has(licenseType.name)) {
+                    licensesByType.set(licenseType.name, [simplifiedLicense]);
+                } else {
+                    licensesByType
+                        .get(licenseType.name)!
+                        .push(simplifiedLicense);
+                }
             }),
         );
-        return licenses;
+
+        // Convert the Map to array format matching the new DTO
+        const result = [];
+        licensesByType.forEach((licenses, type) => {
+            result.push({ type, licenses });
+        });
+
+        return result;
     }
 
     async update(
@@ -185,7 +206,7 @@ export class BussinessLicensesService {
     async createLicense(
         file: Express.Multer.File,
         businessId: string,
-        licenseType: string,
+        typeLicenseId: string,
     ) {
         const business = await this.businessesService.findOne(businessId);
         if (!business) {
@@ -193,16 +214,8 @@ export class BussinessLicensesService {
         }
 
         try {
-            let nameType = '';
-            if (licenseType === CONSTANTS.LICENSE_TYPE.BUSINESS)
-                nameType = 'Giấy phép kinh doanh';
-            if (licenseType === CONSTANTS.LICENSE_TYPE.SECURITY)
-                nameType = 'Giấy phép an ninh trật tự';
-            if (licenseType === CONSTANTS.LICENSE_TYPE.FIRE)
-                nameType = 'Giấy phép phòng cháy chữa cháy';
-
             const license_type =
-                await this.licenseTypeService.findByName(licenseType);
+                await this.licenseTypeService.findById(typeLicenseId);
             if (!license_type) {
                 return 'License type not found';
             }
@@ -216,12 +229,23 @@ export class BussinessLicensesService {
                     },
                 });
 
+            let name = business.name_vietnamese;
+            let name_file = `${business.code}-${license_type.name}-${name}`;
+            let countLicense = 0;
+
+            const licenses = business.licenses as BusinessLicenseDto[];
+            const matchingLicenseGroup = licenses.find(
+                (group) => group.type === license_type.name,
+            );
+            countLicense = matchingLicenseGroup
+                ? matchingLicenseGroup.licenses.length
+                : 0;
+
             if (existingLicense) {
-                return 'License already exists for this business';
+                name_file = `p${countLicense + 1} - ` + name_file;
+                name = `p${countLicense + 1} - ` + name;
             }
 
-            const name = business.name_vietnamese;
-            const name_file = `${business.code}-${nameType}-${name}`;
             const { file_path, size } = await this.storageService.uploadFile(
                 file,
                 name_file,
@@ -241,7 +265,7 @@ export class BussinessLicensesService {
             return true;
         } catch (error) {
             console.log(error);
-            return `Failed to create ${licenseType.toLowerCase()}`;
+            return `Failed to create license`;
         }
     }
 

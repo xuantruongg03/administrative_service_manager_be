@@ -1,25 +1,14 @@
 import { BusinessLicenseDto } from 'src/modules/bussiness-licenses/dto/business-license.dto';
 
 export class BusinessDTO {
+    id: string;
     code: string;
     name_vietnamese: string;
-    name_english: string;
-    name_acronym: string;
-    address: string;
-    email: string;
-    phone: string;
-    fax: string;
-    website: string;
-    chartered_capital: string;
-    type_of_organization: string;
-    owner_id: string;
-    legal_representative_id: string;
-    latitude: number;
-    longitude: number;
     status: string;
     created_at: Date;
-    updated_at: Date;
-    number_of_employees: number;
+    phone: string;
+    address: string;
+    licenses: string[];
 }
 
 export class PersonForBusinessDTO {
