@@ -20,16 +20,15 @@ export class GeocodingService {
             try {
                 const response = await axios.get(this.baseUrl, {
                     params: {
-                        q: address,
-                        key: this.apiKey,
-                        format: 'json',
+                        address: address,
+                        api_key: this.apiKey,
                     },
                 });
-                if (response.data.length > 0) {
-                    const result = response.data[0];
+                if (response.data?.results?.length > 0) {
+                    const result = response.data.results[0].geometry.location;
                     return {
-                        latitude: parseFloat(result.lat),
-                        longitude: parseFloat(result.lon),
+                        latitude: result.lat,
+                        longitude: result.lng,
                     };
                 } else {
                     console.log('Address not found:', address);
