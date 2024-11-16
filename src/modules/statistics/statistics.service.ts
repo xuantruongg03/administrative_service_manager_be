@@ -28,7 +28,7 @@ export class StatisticsService {
     ) {}
 
     async getStatistics(
-        type: 'month' | 'quarter' | 'year',
+        type: 'month' | 'quarter' | 'year' | 'custom',
         value: string,
     ): Promise<GetStatisticsDto | string> {
         try {
@@ -36,14 +36,25 @@ export class StatisticsService {
                 type,
                 value,
             );
+            if (typeof total_businesses === 'string') {
+                return 'Get total businesses failed';
+            }
             const total_business_licenses =
                 await this.countTotalBusinessLicenses(type, value);
+            if (typeof total_business_licenses === 'string') {
+                return 'Get total business licenses failed';
+            }
             const violated_businesses = await this.countViolatedBusinesses(
                 type,
                 value,
             );
+            if (typeof violated_businesses === 'string') {
+                return 'Get violated businesses failed';
+            }
             const new_businesses = await this.countNewBusinesses(type, value);
-
+            if (typeof new_businesses === 'string') {
+                return 'Get new businesses failed';
+            }
             const business_trend = await this.getBusinessNewTrend(type, value);
             if (typeof business_trend === 'string') {
                 return 'Get business trend failed';
@@ -88,6 +99,14 @@ export class StatisticsService {
     private buildTimeQuery(type: string, value: string) {
         const query: any = {};
         switch (type) {
+            case 'custom':
+                const [startDate, endDate] = value.split(' - ');
+                query.where = `created_at >= :startDate AND created_at <= :endDate`;
+                query.parameters = {
+                    startDate: new Date(startDate),
+                    endDate: new Date(endDate + ' 23:59:59'),
+                };
+                break;
             case 'month':
                 query.where = `EXTRACT(MONTH FROM created_at) = :month 
                               AND EXTRACT(YEAR FROM created_at) = :year`;
@@ -128,70 +147,88 @@ export class StatisticsService {
     }
 
     async countNewBusinesses(
-        type: 'month' | 'quarter' | 'year',
+        type: 'month' | 'quarter' | 'year' | 'custom',
         value: string,
-    ): Promise<number> {
-        const query = this.buildTimeQuery(type, value);
-        return await this.businessRepository
-            .createQueryBuilder()
-            .where(`${query.where} AND status = :status`, {
-                ...query.parameters,
-                status: 'active',
-            })
-            .getCount();
+    ): Promise<number | string> {
+        try {
+            const query = this.buildTimeQuery(type, value);
+            return await this.businessRepository
+                .createQueryBuilder()
+                .where(`${query.where} AND status = :status`, {
+                    ...query.parameters,
+                    status: 'active',
+                })
+                .getCount();
+        } catch (error) {
+            console.log(
+                '🚀 ~ StatisticsService ~ countNewBusinesses ~ error:',
+                error,
+            );
+            return 'Get new businesses failed';
+        }
     }
 
     async countViolatedBusinesses(
-        type: 'month' | 'quarter' | 'year',
+        type: 'month' | 'quarter' | 'year' | 'custom',
         value: string,
-    ): Promise<number> {
-        const query = this.buildTimeQuery(type, value);
+    ): Promise<number | string> {
+        try {
+            const query = this.buildTimeQuery(type, value);
 
-        // Get all businesses for the time period
-        const businesses = await this.businessRepository
-            .createQueryBuilder('business')
-            .where(query.where, query.parameters)
-            .getMany();
+            // Get all businesses for the time period
+            const businesses = await this.businessRepository
+                .createQueryBuilder('business')
+                .where(query.where, query.parameters)
+                .getMany();
 
-        let violatedCount = 0;
+            let violatedCount = 0;
 
-        // Check each business for missing licenses
-        for (const business of businesses) {
-            // Get all licenses for this business
-            const licenses = await this.businessLicenseRepository.find({
-                where: { business_id: business.id },
-            });
+            // Check each business for missing licenses
+            for (const business of businesses) {
+                // Get all licenses for this business
+                const licenses = await this.businessLicenseRepository.find({
+                    where: { business_id: business.id },
+                });
 
-            // If no licenses exist at all, count as violated
-            if (!licenses || licenses.length === 0) {
-                violatedCount++;
-                continue;
-            }
+                // If no licenses exist at all, count as violated
+                if (!licenses || licenses.length === 0) {
+                    violatedCount++;
+                    continue;
+                }
 
-            // Get the list of required license types
-            const mandatoryLicenses = await this.licenseTypeRepository.find({
-                where: { is_mandatory: true },
-            });
-
-            // Check if any mandatory license is missing
-            for (const mandatoryLicense of mandatoryLicenses) {
-                const hasLicense = licenses.some(
-                    (license) =>
-                        license.license_type_id === mandatoryLicense.id,
+                // Get the list of required license types
+                const mandatoryLicenses = await this.licenseTypeRepository.find(
+                    {
+                        where: { is_mandatory: true },
+                    },
                 );
 
-                if (!hasLicense) {
-                    violatedCount++;
-                    break; // Count this business once and move to next
+                // Check if any mandatory license is missing
+                for (const mandatoryLicense of mandatoryLicenses) {
+                    const hasLicense = licenses.some(
+                        (license) =>
+                            license.license_type_id === mandatoryLicense.id,
+                    );
+
+                    if (!hasLicense) {
+                        violatedCount++;
+                        break; // Count this business once and move to next
+                    }
                 }
             }
-        }
 
-        return violatedCount;
+            return violatedCount;
+        } catch (error) {
+            console.log(
+                '🚀 ~ StatisticsService ~ countViolatedBusinesses ~ error:',
+                error,
+            );
+            return 'Get violated businesses failed';
+        }
     }
 
     async getBusinessNewTrend(
-        type: 'month' | 'quarter' | 'year',
+        type: 'month' | 'quarter' | 'year' | 'custom',
         value: string,
     ): Promise<StatisticTrendDto | string> {
         try {
@@ -277,10 +314,16 @@ export class StatisticsService {
     }
 
     private getDateRange(
-        type: 'month' | 'quarter' | 'year',
+        type: 'month' | 'quarter' | 'year' | 'custom',
         value: string,
     ): { startDate: Date; endDate: Date } {
-        if (type === 'month') {
+        if (type === 'custom') {
+            const [startDate, endDate] = value.split(' - ');
+            return {
+                startDate: new Date(startDate),
+                endDate: new Date(endDate + ' 23:59:59'),
+            };
+        } else if (type === 'month') {
             // Định dạng value: 'MM/YYYY'
             const [month, year] = value.split('/').map(Number);
 
@@ -402,7 +445,11 @@ export class StatisticsService {
             const backgroundColor = [];
 
             typeOfOrganizations.forEach((item, index) => {
-                labels.push(item.name);
+                labels.push(
+                    item.name
+                        .replace(/^Kinh doanh\s+/i, '')
+                        .replace(/^\w/, (c) => c.toUpperCase()),
+                );
                 data.push(
                     parseInt(
                         businessTypes.find((b) => b.type === item.id)?.count ||

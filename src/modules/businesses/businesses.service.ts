@@ -522,7 +522,6 @@ export class BusinessesService {
             const businessToUpdate = await this.businessRepository.findOne({
                 where: { id },
             });
-
             if (!businessToUpdate) {
                 return 'Business not found';
             }
@@ -539,6 +538,16 @@ export class BusinessesService {
             // Update business with person IDs
             businessToUpdate.legal_representative = representative.id;
             businessToUpdate.owner_id = owner.id;
+
+            // Update coordinates if address changed
+            if (business.address !== businessToUpdate.address) {
+                console.log('Address changed');
+                const coordinates = await this.geocodingService.getCoordinates(
+                    business.address,
+                );
+                businessToUpdate.latitude = coordinates.latitude;
+                businessToUpdate.longitude = coordinates.longitude;
+            }
 
             // Update business fields
             Object.assign(businessToUpdate, {
@@ -558,14 +567,6 @@ export class BusinessesService {
             });
 
             await this.businessRepository.save(businessToUpdate);
-            // Update coordinates if address changed
-            if (business.address !== businessToUpdate.address) {
-                const coordinates = await this.geocodingService.getCoordinates(
-                    business.address,
-                );
-                businessToUpdate.latitude = coordinates.latitude;
-                businessToUpdate.longitude = coordinates.longitude;
-            }
 
             // Update legal representative through PersonsService
             await this.personsService.update(representative.id, {
