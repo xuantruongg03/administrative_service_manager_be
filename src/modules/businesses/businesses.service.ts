@@ -610,6 +610,8 @@ export class BusinessesService {
     async findAllMap(
         page: number,
         limit: number,
+        street: string,
+        type: string,
     ): Promise<{
         data: BusinessMapDTO[];
         totalPages: number;
@@ -620,6 +622,16 @@ export class BusinessesService {
         const validPage = Math.max(1, page);
         const validLimit = Math.max(1, limit);
         const query = this.businessRepository.createQueryBuilder('business');
+
+        if (street && street.trim() !== '') {
+            query.andWhere('business.address LIKE :street', {
+                street: `%${street}%`,
+            });
+        }
+
+        if (type && type.trim() !== '') {
+            query.andWhere('business.type_of_organization = :type', { type });
+        }
 
         const [rs, totalRecords] = await query
             .skip((validPage - 1) * validLimit)
@@ -695,6 +707,10 @@ export class BusinessesService {
 
         const mapData: Promise<MapData>[] = businesses.map(async (business) => {
             const license_status = await this.getLicenseStatus(business.id);
+            const type_of_organization =
+                await this.typeOfOrganizationsService.findOne(
+                    business.type_of_organization,
+                );
             const object: MapData = {
                 name: business.name_vietnamese,
                 address: business.address,
@@ -704,6 +720,8 @@ export class BusinessesService {
                 lng: business.longitude,
                 lat: business.latitude,
                 code: business.code,
+                type_of_organization: type_of_organization.name,
+                id_type_of_organization: type_of_organization.id,
                 id: business.id,
             };
             return object;

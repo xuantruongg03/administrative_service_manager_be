@@ -72,4 +72,6 @@ export class MapData {
     lng: number;
     lat: number;
     code: string;
+    type_of_organization: string;
+    id_type_of_organization: string;
 }

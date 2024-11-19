@@ -26,7 +26,10 @@ import { StatisticsService } from './modules/statistics/statistics.service';
 @Module({
     imports: [
         ConfigModule.forRoot({
-            envFilePath: `.env`,
+            envFilePath:
+                process.env.NODE_ENV === 'production'
+                    ? '.env.production'
+                    : '.env',
         }),
         TypeOrmModule.forRoot({
             type: 'mysql',
@@ -44,8 +47,14 @@ import { StatisticsService } from './modules/statistics/statistics.service';
                 TypeOfOrganization,
             ],
             synchronize: true,
-            // logging: true,
-            // logger: 'advanced-console',
+            ssl: {
+                rejectUnauthorized: false,
+            },
+            extra: {
+                connectionLimit: 10,
+            },
+            retryAttempts: 3,
+            retryDelay: 3000,
         }),
         TypeOrmModule.forFeature([
             Business,

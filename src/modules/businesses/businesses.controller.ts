@@ -105,8 +105,16 @@ export class BusinessesController {
     }
 
     @Get('map')
-    async findAllMap(@Query() query: { page: number; limit: number }) {
-        const { page, limit } = query;
+    async findAllMap(
+        @Query()
+        query: {
+            page: number;
+            limit: number;
+            street: string;
+            type: string;
+        },
+    ) {
+        const { page, limit, street, type } = query;
         const pageNumber = Number(page);
         let limitNumber = Number(limit);
         if (!page) {
@@ -118,6 +126,8 @@ export class BusinessesController {
         const rs = await this.businessesService.findAllMap(
             pageNumber,
             limitNumber,
+            street,
+            type,
         );
         return return_success('Businesses fetched successfully', rs);
     }
