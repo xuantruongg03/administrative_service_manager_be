@@ -600,11 +600,20 @@ export class BusinessesService {
     }
 
     async remove(ids: string[]) {
-        const deletePromises = ids.map((id) => {
-            this.businessRepository.softDelete(id);
-        });
-        await Promise.all(deletePromises);
-        return true;
+        try {
+            const deletePromises = ids.map((id) => {
+                this.businessRepository.softDelete(id);
+            });
+            const deleteBusinessLicenses = ids.map((id) => {
+                this.businessLicensesService.deleteByBusinessId(id);
+            });
+            await Promise.all(deletePromises);
+            await Promise.all(deleteBusinessLicenses);
+            return true;
+        } catch (error) {
+            console.error('Error removing businesses:', error);
+            return 'Failed to remove businesses';
+        }
     }
 
     async findAllMap(

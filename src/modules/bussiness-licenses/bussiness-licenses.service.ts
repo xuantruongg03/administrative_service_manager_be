@@ -2,12 +2,14 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import CONSTANTS from 'src/common/constants';
 import { StorageService } from 'src/shared/storage/storage.service';
-import { ILike, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { BusinessesService } from '../businesses/businesses.service';
 import { LicenseTypeService } from '../license-type/license-type.service';
-import { BusinessLicenseDetailDto } from './dto/business-license.dto';
+import {
+    BusinessLicenseDetailDto,
+    BusinessLicenseDto,
+} from './dto/business-license.dto';
 import { BusinessLicense } from './entities/business-licenses.entity';
-import { BusinessLicenseDto } from './dto/business-license.dto';
 
 @Injectable()
 export class BussinessLicensesService {
@@ -29,52 +31,69 @@ export class BussinessLicensesService {
         totalPages: number;
         isLastPage: boolean;
         totalRecords: number;
+        currentPage: number;
     }> {
         const validPage = Math.max(1, page);
         const validLimit = Math.max(1, limit);
+        console.log('🚀 ~ BussinessLicensesService ~ validLimit:', validLimit);
         let skip = (validPage - 1) * validLimit;
         if (skip < 0) {
             skip = 0;
         }
 
-        let licenses;
-        let totalRecords;
-
         try {
-            [licenses, totalRecords] =
-                await this.businessLicenseRepository.findAndCount({
-                    skip: (validPage - 1) * validLimit,
-                    take: validLimit,
-                    order: {
-                        updated_at: 'DESC',
-                    },
-                });
+            // Create query builder with proper join
+            const query = this.businessLicenseRepository
+                .createQueryBuilder('license')
+                .leftJoinAndSelect(
+                    'businesses',
+                    'business',
+                    'business.id = license.business_id AND business.deleted_at IS NULL',
+                );
 
+            // Add keyword search if provided
             if (keyword && keyword.trim() !== '') {
-                [licenses, totalRecords] =
-                    await this.businessLicenseRepository.findAndCount({
-                        where: [{ name: ILike(`%${keyword}%`) }],
-                        skip: (validPage - 1) * validLimit,
-                        take: validLimit,
-                        order: {
-                            updated_at: 'DESC',
-                        },
-                    });
+                query.andWhere('license.name ILIKE :keyword', {
+                    keyword: `%${keyword}%`,
+                });
             }
 
+            // Get total count and records
+            const [licenses, totalRecords] = await query
+                .skip((validPage - 1) * validLimit)
+                .take(validLimit)
+                .orderBy('license.updated_at', 'DESC')
+                .getManyAndCount();
+
+            console.log(
+                '🚀 ~ BussinessLicensesService ~ totalRecords:',
+                totalRecords,
+            );
+            console.log(
+                '🚀 ~ BussinessLicensesService ~ validLimit:',
+                validLimit,
+            );
             const totalPages = Math.ceil(totalRecords / validLimit);
             const isLastPage = totalRecords <= validPage * validLimit;
 
-            return {
-                data: await Promise.all(
-                    licenses.map(async (license) => {
+            // Map the results
+            const licensesData = await Promise.all(
+                licenses.map(async (license) => {
+                    try {
                         const business = await this.businessesService.findOne(
                             license.business_id,
                         );
+
+                        // Skip this license if the business doesn't exist or is deleted
+                        if (!business) {
+                            return null;
+                        }
+
                         const licenseType =
                             await this.licenseTypeService.findById(
                                 license.license_type_id,
                             );
+
                         return {
                             id: license.id,
                             status: license.status,
@@ -86,11 +105,29 @@ export class BussinessLicensesService {
                             address: business.address,
                             update_at: license.updated_at.toString(),
                         };
-                    }),
-                ),
+                    } catch (error) {
+                        console.error(
+                            `Error processing license ${license.id}:`,
+                            error,
+                        );
+                        return null;
+                    }
+                }),
+            );
+
+            // Filter out null values (licenses with deleted businesses)
+            const validLicenses = licensesData.filter(
+                (license): license is BusinessLicenseDetailDto =>
+                    license !== null,
+            );
+            const totalValidRecords = validLicenses.length;
+
+            return {
+                data: validLicenses,
                 totalPages,
                 isLastPage,
-                totalRecords,
+                totalRecords: totalValidRecords,
+                currentPage: validPage,
             };
         } catch (error) {
             console.error('Error in getAllBusinessLicense:', error);
@@ -167,6 +204,21 @@ export class BussinessLicensesService {
     async delete(id: string): Promise<boolean | string> {
         try {
             const result = await this.businessLicenseRepository.delete(id);
+            if (result.affected === 0) {
+                return 'Business license not found';
+            }
+            return true;
+        } catch (error) {
+            console.log(error);
+            return 'Failed to delete business license';
+        }
+    }
+
+    async deleteByBusinessId(businessId: string): Promise<boolean | string> {
+        try {
+            const result = await this.businessLicenseRepository.delete({
+                business_id: businessId,
+            });
             if (result.affected === 0) {
                 return 'Business license not found';
             }
@@ -267,38 +319,5 @@ export class BussinessLicensesService {
             console.log(error);
             return `Failed to create license`;
         }
-    }
-
-    async createBusinessLicense(
-        file: Express.Multer.File,
-        businessCode: string,
-    ) {
-        return this.createLicense(
-            file,
-            businessCode,
-            CONSTANTS.LICENSE_TYPE.BUSINESS,
-        );
-    }
-
-    async createSecurityLicense(
-        file: Express.Multer.File,
-        businessCode: string,
-    ) {
-        return this.createLicense(
-            file,
-            businessCode,
-            CONSTANTS.LICENSE_TYPE.SECURITY,
-        );
-    }
-
-    async createFirePreventionLicense(
-        file: Express.Multer.File,
-        businessCode: string,
-    ) {
-        return this.createLicense(
-            file,
-            businessCode,
-            CONSTANTS.LICENSE_TYPE.FIRE,
-        );
     }
 }
