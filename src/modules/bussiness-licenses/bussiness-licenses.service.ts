@@ -35,7 +35,6 @@ export class BussinessLicensesService {
     }> {
         const validPage = Math.max(1, page);
         const validLimit = Math.max(1, limit);
-        console.log('🚀 ~ BussinessLicensesService ~ validLimit:', validLimit);
         let skip = (validPage - 1) * validLimit;
         if (skip < 0) {
             skip = 0;
@@ -65,14 +64,6 @@ export class BussinessLicensesService {
                 .orderBy('license.updated_at', 'DESC')
                 .getManyAndCount();
 
-            console.log(
-                '🚀 ~ BussinessLicensesService ~ totalRecords:',
-                totalRecords,
-            );
-            console.log(
-                '🚀 ~ BussinessLicensesService ~ validLimit:',
-                validLimit,
-            );
             const totalPages = Math.ceil(totalRecords / validLimit);
             const isLastPage = totalRecords <= validPage * validLimit;
 
