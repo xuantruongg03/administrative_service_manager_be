@@ -481,6 +481,8 @@ export class BusinessesService {
             type_of_organization: business.type_of_organization,
             status: business.status,
             number_of_employees,
+            latitude: business.latitude,
+            longitude: business.longitude,
             legal_representative: {
                 id: representative.id,
                 citizen_id: representative.citizen_id,
@@ -736,5 +738,19 @@ export class BusinessesService {
             return object;
         });
         return Promise.all(mapData);
+    }
+
+    async updateLatLong(
+        id: string,
+        latitude: number,
+        longitude: number,
+    ): Promise<boolean | string> {
+        try {
+            await this.businessRepository.update(id, { latitude, longitude });
+            return true;
+        } catch (error) {
+            console.error('Error updating latitude and longitude:', error);
+            return 'Failed to update latitude and longitude';
+        }
     }
 }

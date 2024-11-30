@@ -146,4 +146,32 @@ export class BusinessesController {
         const rs = await this.businessesService.findOne(id);
         return return_success('Business fetched successfully', rs);
     }
+
+    @Patch('/:id/update-lat-lon')
+    async updateLatLong(
+        @Param('id') id: string,
+        @Body() body: { latitude: number; longitude: number },
+    ) {
+        if (!id) {
+            throw new BadRequestException('id are required');
+        }
+        const { latitude, longitude } = body;
+        if (!latitude || !longitude) {
+            throw new BadRequestException(
+                'latitude and longitude are required',
+            );
+        }
+        if (isNaN(latitude) || isNaN(longitude)) {
+            throw new BadRequestException('latitude and longitude are invalid');
+        }
+        const rs = await this.businessesService.updateLatLong(
+            id,
+            latitude,
+            longitude,
+        );
+        if (typeof rs === 'string') {
+            throw new BadRequestException(rs);
+        }
+        return return_success('Business updated successfully');
+    }
 }

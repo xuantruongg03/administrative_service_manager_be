@@ -46,6 +46,8 @@ export class BusinessInforDTO {
     created_at: string;
     status: string;
     licenses: BusinessLicenseDto[];
+    latitude: number;
+    longitude: number;
 }
 
 export class BusinessMapDTO {
