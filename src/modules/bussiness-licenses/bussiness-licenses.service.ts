@@ -52,7 +52,7 @@ export class BussinessLicensesService {
 
             // Add keyword search if provided
             if (keyword && keyword.trim() !== '') {
-                query.andWhere('license.name ILIKE :keyword', {
+                query.andWhere('LOWER(license.name) LIKE LOWER(:keyword)', {
                     keyword: `%${keyword}%`,
                 });
             }
