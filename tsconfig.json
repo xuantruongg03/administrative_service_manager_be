@@ -8,7 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
-    "outDir": "./dist",
+    "outDir": "D:\\Github\\DoAn\\asms_build\\dist_be",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
