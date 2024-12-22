@@ -22,6 +22,8 @@ import { StorageModule } from './shared/storage/storage.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
 import { StatisticsController } from './modules/statistics/statistics.controller';
 import { StatisticsService } from './modules/statistics/statistics.service';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { RateLimitInterceptor } from './interceptors/rate-limit.interceptor';
 
 @Module({
     imports: [
@@ -79,6 +81,10 @@ import { StatisticsService } from './modules/statistics/statistics.service';
         GeocodingService,
         BusinessesService,
         StatisticsService,
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: RateLimitInterceptor,
+        },
     ],
 })
 export class AppModule {}

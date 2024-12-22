@@ -9,6 +9,9 @@ import { TypeOfOrganizationsModule } from '../type-of-organizations/type-of-orga
 import { BusinessesController } from './businesses.controller';
 import { BusinessesService } from './businesses.service';
 import { Business } from './entities/businesses.entity';
+import { BusinessCacheInterceptor } from './interceptors/business-cache.interceptor';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditLogInterceptor } from 'src/decorators/audit-log.decorator';
 
 @Module({
     imports: [
@@ -20,7 +23,15 @@ import { Business } from './entities/businesses.entity';
         TypeOfOrganizationsModule,
     ],
     controllers: [BusinessesController],
-    providers: [BusinessesService, GeocodingService],
+    providers: [
+        BusinessesService,
+        GeocodingService,
+        AuditLogInterceptor,
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: BusinessCacheInterceptor,
+        },
+    ],
     exports: [BusinessesService],
 })
 export class BusinessesModule {}

@@ -19,6 +19,7 @@ import { return_success } from 'src/common/return';
 import { BusinessesService } from './businesses.service';
 import { BusinessInforDTO } from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
+import { AuditLogInterceptor } from 'src/decorators/audit-log.decorator';
 
 @Controller('businesses')
 export class BusinessesController {
@@ -132,6 +133,7 @@ export class BusinessesController {
         return return_success('Businesses fetched successfully', rs);
     }
 
+    @UseInterceptors(AuditLogInterceptor)
     @Get('map-marker')
     async findAllMapMarker() {
         const rs = await this.businessesService.findAllMapMarker();
