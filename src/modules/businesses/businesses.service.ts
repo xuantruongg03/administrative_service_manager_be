@@ -19,6 +19,9 @@ import {
     MapData,
 } from './dto/business.dto';
 import { Business } from './entities/businesses.entity';
+import { DataSource, In } from 'typeorm';
+import { Employee } from '../employees/entities/employee.entity';
+import { BusinessLicense } from '../bussiness-licenses/entities/business-licenses.entity';
 
 @Injectable()
 export class BusinessesService {
@@ -34,6 +37,7 @@ export class BusinessesService {
         @Inject(forwardRef(() => BussinessLicensesService))
         private readonly businessLicensesService: BussinessLicensesService,
         private readonly licenseTypeService: LicenseTypeService,
+        private readonly dataSource: DataSource,
     ) {}
 
     public async generateId() {
@@ -602,19 +606,68 @@ export class BusinessesService {
     }
 
     async remove(ids: string[]) {
+        // Tạo queryRunner để quản lý transaction
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
         try {
-            const deletePromises = ids.map((id) => {
-                this.businessRepository.softDelete(id);
+            // Xóa nhân viên
+            await queryRunner.manager.delete(Employee, {
+                business_id: In(ids),
             });
-            const deleteBusinessLicenses = ids.map((id) => {
-                this.businessLicensesService.deleteByBusinessId(id);
+
+            // Xóa giấy phép
+            await queryRunner.manager.delete(BusinessLicense, {
+                business_id: In(ids),
             });
-            await Promise.all(deletePromises);
-            await Promise.all(deleteBusinessLicenses);
+
+            // Xóa doanh nghiệp
+            await queryRunner.manager.delete(Business, {
+                id: In(ids),
+            });
+
+            // Commit transaction nếu tất cả các thao tác thành công
+            await queryRunner.commitTransaction();
             return true;
         } catch (error) {
+            // Rollback tất cả thay đổi nếu có lỗi xảy ra
+            await queryRunner.rollbackTransaction();
             console.error('Error removing businesses:', error);
             return 'Failed to remove businesses';
+        } finally {
+            // Giải phóng queryRunner
+            await queryRunner.release();
+        }
+    }
+
+    async removeAll() {
+        // Create queryRunner to manage transaction
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+            // Delete all employees
+            await queryRunner.manager.delete(Employee, {});
+
+            // Delete all business licenses
+            await queryRunner.manager.delete(BusinessLicense, {});
+
+            // Delete all businesses
+            await queryRunner.manager.delete(Business, {});
+
+            // Commit transaction if all operations succeed
+            await queryRunner.commitTransaction();
+            return true;
+        } catch (error) {
+            // Rollback all changes if any error occurs
+            await queryRunner.rollbackTransaction();
+            console.error('Error removing all businesses:', error);
+            return 'Failed to remove all businesses';
+        } finally {
+            // Release queryRunner
+            await queryRunner.release();
         }
     }
 

@@ -104,6 +104,15 @@ export class BusinessesController {
         return return_success('Businesses deleted successfully');
     }
 
+    @Delete('remove-all')
+    async removeAll() {
+        const rs = await this.businessesService.removeAll();
+        if (typeof rs === 'string') {
+            throw new BadRequestException(rs);
+        }
+        return return_success('Businesses deleted successfully');
+    }
+
     @Get('map')
     async findAllMap(
         @Query()
