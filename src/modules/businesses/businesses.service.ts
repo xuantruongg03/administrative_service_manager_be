@@ -377,11 +377,10 @@ export class BusinessesService {
         const workbook = XLSX.utils.book_new();
         const worksheetData = await Promise.all(
             businesses.map(async (business) => {
-                const representative =
-                    await this.personsService.findByCitizenId(
-                        business.legal_representative,
-                    );
-                const owner = await this.personsService.findByCitizenId(
+                const representative = await this.personsService.findOne(
+                    business.legal_representative,
+                );
+                const owner = await this.personsService.findOne(
                     business.owner_id,
                 );
                 const type_of_organization =
