@@ -47,7 +47,7 @@ export class BussinessLicensesService {
                 .leftJoinAndSelect(
                     'businesses',
                     'business',
-                    'business.id = license.business_id AND business.deleted_at IS NULL',
+                    'business.id = license.business_id',
                 );
 
             // Add keyword search if provided
